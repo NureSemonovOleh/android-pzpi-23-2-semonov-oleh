@@ -7,7 +7,13 @@ import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.graphics.Insets;
 import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowInsetsCompat;
-
+//Завдання №1
+//
+//Встановити Android Studio та створити мінімальний застосунок для Android.
+////Застосунок повинен містити одну активність (Activity).
+//В активності потрібно реалізувати усі базові методи життєвого циклу активностей.
+//При запуску застосунку у центрі екрану повинен з'являтися напис «Task 1».
+//Для розмітки екрану активності потрібно використати лінійну розмітку
 public class MainActivity extends AppCompatActivity {
 
     @Override
