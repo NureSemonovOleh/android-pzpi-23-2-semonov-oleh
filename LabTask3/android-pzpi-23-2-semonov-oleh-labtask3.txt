@@ -1,0 +1,970 @@
+МІНІСТЕРСТВО ОСВІТИ І НАУКИ УКРАЇНИ
+ХАРКІВСЬКИЙ НАЦІОНАЛЬНИЙ УНІВЕРСИТЕТ РАДІОЕЛЕКТРОНІКИ
+
+
+КАФЕДРА ПРОГРАМНОЇ ІНЖЕНЕРІЇ
+
+
+
+
+Звіт
+з практичної роботи №3
+   
+
+
+
+
+
+Виконав:                                                                   Перевірив:
+ст. гр. ПЗПІ-23-2                       			  ст. викладач кафедри ПІ
+Семьонов Олег					 	  Сокорчук Ігор Петрович
+
+
+
+
+
+
+
+
+Харків 2024
+Мета завдання 
+
+Розробити калькулятор на 4 базові арифметичні операції з кнопками для введення аргументів і дій.
+Калькулятор повинен мати адаптивний користувацький інтерфейс у різних орієнтаціях екрану та на екранах різної роздільної здатності.
+
+Хід роботи 
+
+Створимо проект з шаблоном Empty Views Activity.
+Розробимо розмітку для калькулятора яка включає два основних елементи: текстове поле для відображення результатів та дій і сітчаста розмітка з кнопками. Створимо та налаштумо текстове поле:
+
+<TextView
+    android:id="@+id/textView"
+    android:layout_width="match_parent"
+    android:layout_height="180dp"
+    android:layout_weight="2"
+    android:background="@color/black"
+    android:gravity="end"
+    android:hint="0"
+    android:text="0"
+
+    android:textColor="@color/white"
+    android:textSize="50sp" />
+
+Також створимо сітчасту розмітку для наших кнопок:
+
+<GridLayout
+    android:id="@+id/gridLayout"
+    android:layout_width="match_parent"
+    android:layout_height="0dp"
+    android:layout_weight="5"
+    android:background="@color/black"
+    android:columnCount="4"
+
+    android:rowCount="5">
+
+Кожна кнопка була створена за одним принципом, наприклад:
+<Button
+    android:id="@+id/button7"
+    android:layout_width="wrap_content"
+    android:layout_height="wrap_content"
+    android:layout_rowWeight="1"
+    android:layout_columnWeight="1"
+    android:backgroundTint="#232323"
+    android:onClick="onNumberButtonClick"
+    android:text="7"
+    android:textColor="@color/white"
+    tools:layout_editor_absoluteX="16dp"
+    tools:layout_editor_absoluteY="335dp" />
+
+
+
+
+Виділилась лише кнопка дорівнює, яка має атрибут для розтягування кнопки на 4 стовпці:
+<Button
+    android:id="@+id/buttonEqual"
+    android:layout_width="wrap_content"
+    android:layout_height="wrap_content"
+    android:layout_rowWeight="1"
+    android:layout_columnSpan="4"
+
+    android:layout_columnWeight="1"
+    android:backgroundTint="#FF6D00"
+    android:onClick="onEqualButtonClick"
+    android:text="="
+    android:textColor="#232323"
+
+    tools:layout_editor_absoluteX="16dp"
+    tools:layout_editor_absoluteY="335dp" />
+
+
+Повний код буде надано у додатку А.
+
+Також треба було створити ландшафтну розмітку, вона не сильно відрізняється від першої, її код буде надано у додатку В
+
+Перейдемо до логічної частини калькулятору. Спершу ініалізуємо зміні, а саме:
+
+private TextView output;
+
+private double firstNumber = 0;
+private double secondNumber = 0;
+private String operator = "";
+private String currInput = "";
+
+private final DecimalFormat decimalFormat = new DecimalFormat(
+        "#.############",
+        new DecimalFormatSymbols(){{
+            setDecimalSeparator('.');
+        }}
+);
+
+Де output це текстове поле, firstnumber and secondnumber — змінні для збереження введених чисел, operator зберігає натиснутий арифемтичний оператор і currInput — зберігає те що ми зараз прописали ( перше число, оператор або друге число). Останнім є об’єкт класу, який являє собою шаблон, в якому буде виводитись наш результат задля запобігання наяви Е і інших великих значень.
+Перейдемо до методів наших кнопок. Першим є метод для цифр і точки:
+
+public void onNumberButtonClick(View v){
+    Button button = (Button) v;
+    String btnText = button.getText().toString();
+
+    if (btnText.equals(".")) {
+        if (!currInput.contains(".")) {
+            if (currInput.isEmpty()) {
+                currInput = "0.";
+            } else {
+                currInput += ".";
+            }
+        }
+    } else {
+        currInput += btnText;
+    }
+    output.setText(currInput);
+}
+
+Метод приймає кнопку і текст з неї. Так як для крапки не було зроблено методу, робимо перевірку що натиснуто. Якщо натиснута кнопка з точкою і нинішній інпут не має точки, то перевіряємо чи пустий взагалі наш інпут, якщо так то виводимо «0.», щоб не було помилки, якщо ж вже не пустий, то просто додаємо крапку. Якщо натиснута інша кнопка, то просто додаємо її зміст в інпут і потім виводимо в текстове поле.
+
+Наступним методом є метод для операторів:
+public void onOperatorButtonClick(View v){
+    Button button = (Button) v;
+    String opText = button.getText().toString();
+    try {
+        firstNumber = Double.parseDouble(currInput);
+    } catch (NumberFormatException e){
+        output.setText("Error");
+        currInput = "";
+        return;
+    }
+    operator = opText;
+    output.setText(currInput);
+    currInput = "";
+}
+
+Так  само спочатку приймаємо кнопку і її текст. Далі намагаємось запарсити інпут який був до цього у змінну firstNumber, якщо все вдається, то зберігаємо результат, якщо ж ні, то виводимо про помилку і очищаємо інпут. Потім зберігаємо у змінну оператор текст кнопки оператора і виводимо на текстове поле з очисткою інпуту.
+Третій метод працює для кнопки дорівнює:
+
+public void onEqualButtonClick(View v){
+    if (operator.isEmpty()) {
+        output.setText("Error");
+        return;
+    }
+    try {
+        secondNumber = Double.parseDouble(currInput);
+    } catch (NumberFormatException e ) {
+        output.setText("Error");
+        currInput = "";
+        operator = "";
+        return;
+    }
+    double result;
+    switch (operator) {
+        case "+":
+            result = firstNumber + secondNumber;
+            break;
+        case "-":
+            result = firstNumber - secondNumber;
+            break;
+        case "*":
+            result = firstNumber * secondNumber;
+            break;
+        case "/":
+            if (secondNumber != 0) {
+                result = firstNumber / secondNumber;
+            } else {
+                output.setText("Error");
+                currInput = "";
+                operator = "";
+                return;
+            }
+            break;
+        default:
+            output.setText("Error");
+            currInput = "";
+            operator = "";
+            return;
+    }
+String resultText = decimalFormat.format(result);
+output.setText(resultText);
+currInput = resultText;
+operator = "";
+
+
+Перевіряємо, чи введений оператор, якщо ні виводимо помилку. Так само намагаємось запарсити інпут у secondNumber, якщо все вдалося то записуємо у змінну, якщо ні виводимо помилку. Далі ініціалізуємо локальку змінну для результату і за допомогою switch-case записуємо робимо арифметичну дію згідно оператору. Для ділення також додана перевірка на 0. Створимо строку за шаблоном і переведемо результат у шаблон і цю строку виведемо у текстове поле як результат. Також  у нинішній інпут збережемо результат задля можливості продовжити дії з результатом. Оператор, звичайно, очистимо.
+
+Останнім методом кнопки є метод кнопки очищення:
+public void onClearButtonClick(View v) {
+    currInput = "";
+    operator = "";
+    firstNumber = 0;
+    secondNumber = 0;
+    output.setText("0");
+}
+
+Метод просто очищує всі змінні до початкового стану, що дає можливість продовжити роботу зпочатку.
+
+Останнім кроком буде збереження змінних при зміні орієнтації екрану, адже актівіті перезавантажується.
+Першим методом є перегрузка метода збереження:
+@Override
+protected void onSaveInstanceState(Bundle outState){
+    super.onSaveInstanceState(outState);
+    outState.putString("currInput", currInput);
+    outState.putDouble("firstNumber", firstNumber);
+    outState.putDouble("secondNumber", secondNumber);
+    outState.putString("operator", operator);
+    outState.putString("outputText", output.getText().toString());
+}
+В ньому просто зберігаємо стан всіх змінних.
+Другий же метод є перегрузкою методу відновлення:
+@Override
+protected void onRestoreInstanceState(Bundle savedInstanceState){
+    super.onRestoreInstanceState(savedInstanceState);
+    currInput = savedInstanceState.getString("currInput", "");
+    firstNumber = savedInstanceState.getDouble("firstNumber", 0);
+    secondNumber = savedInstanceState.getDouble("secondNumber", 0);
+    operator = savedInstanceState.getString("operator", "");
+    String outputText = savedInstanceState.getString("outputText", "0");
+    output.setText(outputText);
+}
+В ньому всі змінні ми відновлюємо, так, якими вони були у момент збереження.
+
+
+На цьому всі умови лабораторної роботи були виконані.
+
+Висновки:
+Під час виконання роботи було створено простий калькулятор на 4 дії з можливістю збереження стану при зміні орієнтації, а також був зроблений під різні орієнтації екрану.
+Відеозвіт. URL: https://youtu.be/wVkM5He4lNo 
+
+
+
+Використані джерела:
+1. GridLayout: https://developer.android.com/reference/android/widget/GridLayout
+2. How to make a Calculator in Android Studio | 2024 :https://www.youtube.com/watch?v=X3KQdwVlo1Q
+
+
+ДОДАТОК А (файл портретної розмітки)
+
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/main"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+
+    tools:context=".MainActivity">
+
+
+    <TextView
+        android:id="@+id/textView"
+        android:layout_width="match_parent"
+        android:layout_height="180dp"
+        android:layout_weight="2"
+        android:background="@color/black"
+        android:gravity="end"
+        android:hint="0"
+        android:text="0"
+
+        android:textColor="@color/white"
+        android:textSize="50sp" />
+
+    <GridLayout
+        android:id="@+id/gridLayout"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="5"
+        android:background="@color/black"
+        android:columnCount="4"
+
+        android:rowCount="5">
+
+
+        <Button
+            android:id="@+id/button7"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_rowWeight="1"
+            android:layout_columnWeight="1"
+            android:backgroundTint="#232323"
+            android:onClick="onNumberButtonClick"
+            android:text="7"
+            android:textColor="@color/white"
+            tools:layout_editor_absoluteX="16dp"
+            tools:layout_editor_absoluteY="335dp" />
+
+        <Button
+            android:id="@+id/button8"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_rowWeight="1"
+            android:layout_columnWeight="1"
+            android:backgroundTint="#232323"
+            android:onClick="onNumberButtonClick"
+            android:text="8"
+            android:textColor="@color/white"
+            tools:layout_editor_absoluteX="16dp"
+            tools:layout_editor_absoluteY="335dp" />
+
+        <Button
+            android:id="@+id/button9"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_rowWeight="1"
+            android:layout_columnWeight="1"
+            android:backgroundTint="#232323"
+            android:onClick="onNumberButtonClick"
+            android:text="9"
+            android:textColor="@color/white"
+            tools:layout_editor_absoluteX="16dp"
+            tools:layout_editor_absoluteY="335dp" />
+
+        <Button
+            android:id="@+id/buttonDivide"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_rowWeight="1"
+            android:layout_columnWeight="1"
+            android:backgroundTint="#232323"
+            android:onClick="onOperatorButtonClick"
+            android:text="/"
+
+            android:textColor="#FF6D00"
+
+            tools:layout_editor_absoluteX="16dp"
+            tools:layout_editor_absoluteY="335dp" />
+
+        <Button
+            android:id="@+id/button4"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_row="1"
+            android:layout_rowWeight="1"
+            android:layout_column="0"
+            android:layout_columnWeight="1"
+            android:backgroundTint="#232323"
+            android:onClick="onNumberButtonClick"
+            android:text="4"
+            android:textColor="@color/white"
+            tools:layout_editor_absoluteX="16dp"
+            tools:layout_editor_absoluteY="335dp" />
+
+        <Button
+            android:id="@+id/button5"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_rowWeight="1"
+            android:layout_columnWeight="1"
+            android:backgroundTint="#232323"
+            android:onClick="onNumberButtonClick"
+            android:text="5"
+            android:textColor="@color/white"
+            tools:layout_editor_absoluteX="16dp"
+            tools:layout_editor_absoluteY="335dp" />
+
+        <Button
+            android:id="@+id/button6"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_rowWeight="1"
+            android:layout_columnWeight="1"
+            android:backgroundTint="#232323"
+            android:onClick="onNumberButtonClick"
+            android:text="6"
+            android:textColor="@color/white"
+            tools:layout_editor_absoluteX="16dp"
+            tools:layout_editor_absoluteY="335dp" />
+
+        <Button
+            android:id="@+id/buttonMultiply"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_rowWeight="1"
+            android:layout_columnWeight="1"
+            android:backgroundTint="#232323"
+            android:onClick="onOperatorButtonClick"
+            android:text="*"
+            android:textColor="#FF6D00"
+            tools:layout_editor_absoluteX="16dp"
+            tools:layout_editor_absoluteY="335dp" />
+
+        <Button
+            android:id="@+id/button1"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_row="2"
+            android:layout_rowWeight="1"
+            android:layout_column="0"
+            android:layout_columnWeight="1"
+            android:backgroundTint="#232323"
+            android:onClick="onNumberButtonClick"
+            android:text="1"
+            android:textColor="@color/white"
+            tools:layout_editor_absoluteX="16dp"
+            tools:layout_editor_absoluteY="335dp" />
+
+        <Button
+            android:id="@+id/button2"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_rowWeight="1"
+            android:layout_columnWeight="1"
+            android:backgroundTint="#232323"
+            android:onClick="onNumberButtonClick"
+            android:text="2"
+            android:textColor="@color/white"
+            tools:layout_editor_absoluteX="16dp"
+            tools:layout_editor_absoluteY="335dp" />
+
+        <Button
+            android:id="@+id/button3"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_rowWeight="1"
+            android:layout_columnWeight="1"
+            android:backgroundTint="#232323"
+            android:onClick="onNumberButtonClick"
+            android:text="3"
+            android:textColor="@color/white"
+            tools:layout_editor_absoluteX="16dp"
+            tools:layout_editor_absoluteY="335dp" />
+
+        <Button
+            android:id="@+id/buttonMinus"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_rowWeight="1"
+            android:layout_columnWeight="1"
+            android:backgroundTint="#232323"
+            android:onClick="onOperatorButtonClick"
+
+            android:text="-"
+            android:textColor="#FF6D00"
+            tools:layout_editor_absoluteX="16dp"
+            tools:layout_editor_absoluteY="335dp" />
+
+        <Button
+            android:id="@+id/buttonClear"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_row="3"
+            android:layout_rowWeight="1"
+            android:layout_column="0"
+            android:layout_columnWeight="1"
+            android:backgroundTint="#232323"
+            android:onClick="onClearButtonClick"
+            android:text="Clear"
+            android:textColor="@color/white"
+            tools:layout_editor_absoluteX="16dp"
+            tools:layout_editor_absoluteY="335dp" />
+
+        <Button
+            android:id="@+id/button0"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_rowWeight="1"
+            android:layout_columnWeight="1"
+            android:backgroundTint="#232323"
+            android:onClick="onNumberButtonClick"
+            android:text="0"
+            android:textColor="@color/white"
+            tools:layout_editor_absoluteX="16dp"
+            tools:layout_editor_absoluteY="335dp" />
+
+        <Button
+            android:id="@+id/buttonDot"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_rowWeight="1"
+            android:layout_columnWeight="1"
+            android:backgroundTint="#232323"
+            android:onClick="onNumberButtonClick"
+            android:text="."
+            android:textColor="@color/white"
+            tools:layout_editor_absoluteX="16dp"
+            tools:layout_editor_absoluteY="335dp" />
+
+        <Button
+            android:id="@+id/buttonPlus"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_rowWeight="1"
+            android:layout_columnWeight="1"
+            android:backgroundTint="#232323"
+            android:onClick="onOperatorButtonClick"
+            android:text="+"
+            android:textColor="#FF6D00"
+            tools:layout_editor_absoluteX="16dp"
+            tools:layout_editor_absoluteY="335dp" />
+
+        <Button
+            android:id="@+id/buttonEqual"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_rowWeight="1"
+            android:layout_columnSpan="4"
+
+            android:layout_columnWeight="1"
+            android:backgroundTint="#FF6D00"
+            android:onClick="onEqualButtonClick"
+            android:text="="
+            android:textColor="#232323"
+
+            tools:layout_editor_absoluteX="16dp"
+            tools:layout_editor_absoluteY="335dp" />
+
+
+    </GridLayout>
+
+
+</LinearLayout>
+
+ДОДАТОК В (файл ландшафтної розмітки)
+
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/main"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="horizontal"
+    android:background="@color/black"
+    tools:context=".MainActivity">
+
+
+    <TextView
+        android:id="@+id/textView"
+        android:layout_width="0dp"
+        android:layout_height="match_parent"
+        android:layout_weight="2.5"
+        android:background="@color/black"
+        android:gravity="end"
+        android:layout_marginEnd="10dp"
+        android:hint="0"
+        android:text="0"
+
+        android:textColor="@color/white"
+        android:textSize="50sp" />
+
+    <GridLayout
+        android:id="@+id/gridLayout"
+        android:layout_width="0dp"
+        android:layout_height="match_parent"
+        android:layout_weight="5"
+        android:background="@color/black"
+        android:columnCount="4"
+
+        android:rowCount="5">
+
+
+        <Button
+            android:id="@+id/button7"
+            android:layout_width="50sp"
+            android:layout_height="50sp"
+            android:layout_rowWeight="1"
+            android:layout_columnWeight="1"
+            android:textColor="@color/white"
+            android:backgroundTint="#232323"
+            android:text="7"
+            android:onClick="onNumberButtonClick"
+            tools:layout_editor_absoluteX="16dp"
+            tools:layout_editor_absoluteY="335dp" />
+
+        <Button
+            android:id="@+id/button8"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_rowWeight="1"
+            android:layout_columnWeight="1"
+            android:text="8"
+            android:onClick="onNumberButtonClick"
+            android:textColor="@color/white"
+            android:backgroundTint="#232323"
+            tools:layout_editor_absoluteX="16dp"
+            tools:layout_editor_absoluteY="335dp" />
+
+        <Button
+            android:id="@+id/button9"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_rowWeight="1"
+            android:layout_columnWeight="1"
+            android:text="9"
+            android:onClick="onNumberButtonClick"
+            android:textColor="@color/white"
+            android:backgroundTint="#232323"
+            tools:layout_editor_absoluteX="16dp"
+            tools:layout_editor_absoluteY="335dp" />
+
+        <Button
+            android:id="@+id/buttonDivide"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_rowWeight="1"
+            android:layout_columnWeight="1"
+            android:backgroundTint="#232323"
+            android:onClick="onOperatorButtonClick"
+            android:text="/"
+
+            android:textColor="#FF6D00"
+
+            tools:layout_editor_absoluteX="16dp"
+            tools:layout_editor_absoluteY="335dp" />
+
+        <Button
+            android:id="@+id/button4"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_row="1"
+            android:layout_rowWeight="1"
+            android:layout_column="0"
+            android:layout_columnWeight="1"
+            android:text="4"
+            android:onClick="onNumberButtonClick"
+            android:textColor="@color/white"
+            android:backgroundTint="#232323"
+            tools:layout_editor_absoluteX="16dp"
+            tools:layout_editor_absoluteY="335dp" />
+
+        <Button
+            android:id="@+id/button5"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_rowWeight="1"
+            android:layout_columnWeight="1"
+            android:text="5"
+            android:onClick="onNumberButtonClick"
+            android:textColor="@color/white"
+            android:backgroundTint="#232323"
+            tools:layout_editor_absoluteX="16dp"
+            tools:layout_editor_absoluteY="335dp" />
+
+        <Button
+            android:id="@+id/button6"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_rowWeight="1"
+            android:layout_columnWeight="1"
+            android:text="6"
+            android:onClick="onNumberButtonClick"
+            android:textColor="@color/white"
+            android:backgroundTint="#232323"
+            tools:layout_editor_absoluteX="16dp"
+            tools:layout_editor_absoluteY="335dp" />
+
+        <Button
+            android:id="@+id/buttonMultiply"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_rowWeight="1"
+            android:layout_columnWeight="1"
+            android:text="*"
+            android:onClick="onOperatorButtonClick"
+            android:textColor="#FF6D00"
+            android:backgroundTint="#232323"
+            tools:layout_editor_absoluteX="16dp"
+            tools:layout_editor_absoluteY="335dp" />
+
+        <Button
+            android:id="@+id/button1"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_row="2"
+            android:layout_rowWeight="1"
+            android:layout_column="0"
+            android:layout_columnWeight="1"
+            android:text="1"
+            android:onClick="onNumberButtonClick"
+            android:textColor="@color/white"
+            android:backgroundTint="#232323"
+            tools:layout_editor_absoluteX="16dp"
+            tools:layout_editor_absoluteY="335dp" />
+
+        <Button
+            android:id="@+id/button2"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_rowWeight="1"
+            android:layout_columnWeight="1"
+            android:text="2"
+            android:onClick="onNumberButtonClick"
+            android:textColor="@color/white"
+            android:backgroundTint="#232323"
+            tools:layout_editor_absoluteX="16dp"
+            tools:layout_editor_absoluteY="335dp" />
+
+        <Button
+            android:id="@+id/button3"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_rowWeight="1"
+            android:layout_columnWeight="1"
+            android:text="3"
+            android:onClick="onNumberButtonClick"
+            android:textColor="@color/white"
+            android:backgroundTint="#232323"
+            tools:layout_editor_absoluteX="16dp"
+            tools:layout_editor_absoluteY="335dp" />
+
+        <Button
+            android:id="@+id/buttonMinus"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_rowWeight="1"
+            android:layout_columnWeight="1"
+            android:text="-"
+            android:onClick="onOperatorButtonClick"
+            android:textColor="#FF6D00"
+            android:backgroundTint="#232323"
+            tools:layout_editor_absoluteX="16dp"
+            tools:layout_editor_absoluteY="335dp" />
+
+        <Button
+            android:id="@+id/buttonClear"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_row="3"
+            android:layout_rowWeight="1"
+            android:layout_column="0"
+            android:layout_columnWeight="1"
+            android:text="Clear"
+            android:onClick="onClearButtonClick"
+            android:textColor="@color/white"
+            android:backgroundTint="#232323"
+            tools:layout_editor_absoluteX="16dp"
+            tools:layout_editor_absoluteY="335dp" />
+
+        <Button
+            android:id="@+id/button0"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_rowWeight="1"
+            android:layout_columnWeight="1"
+            android:text="0"
+            android:onClick="onNumberButtonClick"
+            android:textColor="@color/white"
+            android:backgroundTint="#232323"
+            tools:layout_editor_absoluteX="16dp"
+            tools:layout_editor_absoluteY="335dp" />
+
+        <Button
+            android:id="@+id/buttonDot"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_rowWeight="1"
+            android:layout_columnWeight="1"
+            android:text="."
+            android:onClick="onNumberButtonClick"
+            android:textColor="@color/white"
+            android:backgroundTint="#232323"
+            tools:layout_editor_absoluteX="16dp"
+            tools:layout_editor_absoluteY="335dp" />
+
+        <Button
+            android:id="@+id/buttonPlus"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_rowWeight="1"
+            android:layout_columnWeight="1"
+            android:text="+"
+            android:onClick="onOperatorButtonClick"
+            android:textColor="#FF6D00"
+            android:backgroundTint="#232323"
+            tools:layout_editor_absoluteX="16dp"
+            tools:layout_editor_absoluteY="335dp" />
+
+        <Button
+            android:id="@+id/buttonEqual"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_rowWeight="1"
+            android:layout_columnSpan="4"
+
+            android:layout_columnWeight="1"
+            android:backgroundTint="#FF6D00"
+            android:text="="
+            android:onClick="onEqualButtonClick"
+            android:textColor="#232323"
+
+
+            tools:layout_editor_absoluteX="16dp"
+            tools:layout_editor_absoluteY="335dp" />
+    </GridLayout>
+
+</LinearLayout>
+
+ДОДАТОК С (Код калькулятору)
+
+package com.nuresemonovoleh.android_pzpi_23_2_semonov_oleh_labtask3;
+
+import android.os.Bundle;
+import android.view.View;
+import android.widget.Button;
+import android.widget.TextView;
+
+import androidx.activity.EdgeToEdge;
+import androidx.appcompat.app.AppCompatActivity;
+import androidx.core.graphics.Insets;
+import androidx.core.view.ViewCompat;
+import androidx.core.view.WindowInsetsCompat;
+
+import java.text.DecimalFormat;
+import java.text.DecimalFormatSymbols;
+
+public class MainActivity extends AppCompatActivity {
+
+    private TextView output;
+
+    private double firstNumber = 0;
+    private double secondNumber = 0;
+    private String operator = "";
+    private String currInput = "";
+
+    private final DecimalFormat decimalFormat = new DecimalFormat(
+            "#.############",
+            new DecimalFormatSymbols(){{
+                setDecimalSeparator('.');
+            }}
+    );
+
+
+    @Override
+    protected void onCreate(Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+        EdgeToEdge.enable(this);
+        setContentView(R.layout.activity_main);
+        ViewCompat.setOnApplyWindowInsetsListener(findViewById(R.id.main), (v, insets) -> {
+            Insets systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars());
+            v.setPadding(systemBars.left, systemBars.top, systemBars.right, systemBars.bottom);
+            return insets;
+        });
+        output = findViewById(R.id.textView);
+    }
+
+    public void onNumberButtonClick(View v){
+        Button button = (Button) v;
+        String btnText = button.getText().toString();
+
+        if (btnText.equals(".")) {
+            if (!currInput.contains(".")) {
+                if (currInput.isEmpty()) {
+                    currInput = "0.";
+                } else {
+                    currInput += ".";
+                }
+            }
+        } else {
+            currInput += btnText;
+        }
+        output.setText(currInput);
+    }
+
+    public void onOperatorButtonClick(View v){
+        Button button = (Button) v;
+        String opText = button.getText().toString();
+        try {
+            firstNumber = Double.parseDouble(currInput);
+        } catch (NumberFormatException e){
+            output.setText("Error");
+            currInput = "";
+            return;
+        }
+        operator = opText;
+        output.setText(currInput);
+        currInput = "";
+    }
+
+    public void onEqualButtonClick(View v){
+        if (operator.isEmpty()) {
+            output.setText("Error");
+            return;
+        }
+        try {
+            secondNumber = Double.parseDouble(currInput);
+        } catch (NumberFormatException e ) {
+            output.setText("Error");
+            currInput = "";
+            operator = "";
+            return;
+        }
+        double result;
+        switch (operator) {
+            case "+":
+                result = firstNumber + secondNumber;
+                break;
+            case "-":
+                result = firstNumber - secondNumber;
+                break;
+            case "*":
+                result = firstNumber * secondNumber;
+                break;
+            case "/":
+                if (secondNumber != 0) {
+                    result = firstNumber / secondNumber;
+                } else {
+                    output.setText("Error");
+                    currInput = "";
+                    operator = "";
+                    return;
+                }
+                break;
+            default:
+                output.setText("Error");
+                currInput = "";
+                operator = "";
+                return;
+        }
+
+
+        String resultText = decimalFormat.format(result);
+        output.setText(resultText);
+        currInput = resultText;
+        operator = "";
+    }
+
+    public void onClearButtonClick(View v) {
+        currInput = "";
+        operator = "";
+        firstNumber = 0;
+        secondNumber = 0;
+        output.setText("0");
+    }
+
+    @Override
+    protected void onSaveInstanceState(Bundle outState){
+        super.onSaveInstanceState(outState);
+        outState.putString("currInput", currInput);
+        outState.putDouble("firstNumber", firstNumber);
+        outState.putDouble("secondNumber", secondNumber);
+        outState.putString("operator", operator);
+        outState.putString("outputText", output.getText().toString());
+    }
+
+    @Override
+    protected void onRestoreInstanceState(Bundle savedInstanceState){
+        super.onRestoreInstanceState(savedInstanceState);
+        currInput = savedInstanceState.getString("currInput", "");
+        firstNumber = savedInstanceState.getDouble("firstNumber", 0);
+        secondNumber = savedInstanceState.getDouble("secondNumber", 0);
+        operator = savedInstanceState.getString("operator", "");
+        String outputText = savedInstanceState.getString("outputText", "0");
+        output.setText(outputText);
+    }
+}
+
