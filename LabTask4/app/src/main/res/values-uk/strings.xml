@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="menu_add_note">Додати Нотатку</string>
+    <string name="menu_filter">Фільтр</string>
+    <string name="menu_search">Пошук</string>
+    <string name="title">Заголовок</string>
+    <string name="description">Опис</string>
+    <string name="importance">Важливість</string>
+    <string name="select_date">Вибрана дата</string>
+    <string name="date_not_selected">Дата не вибрана</string>
+    <string name="select_time">Вибраний час</string>
+    <string name="time_not_selected">Час не вибрано</string>
+    <string name="save">Зберегти</string>
+    <string name="importance_low">Низька важливість</string>
+    <string name="importance_medium">Середня важливість</string>
+    <string name="importance_high">Висока важливість</string>
+    <string name="filter_title">Фільтрація за важливістю</string>
+    <string name="NoteTitle">Заголовок нотатки</string>
+    <string name="creation_time">Час створення</string>
+    <string name="appName">Нотатки</string>
+</resources>
