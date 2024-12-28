@@ -1,0 +1,486 @@
+МІНІСТЕРСТВО ОСВІТИ І НАУКИ УКРАЇНИ
+ХАРКІВСЬКИЙ НАЦІОНАЛЬНИЙ УНІВЕРСИТЕТ РАДІОЕЛЕКТРОНІКИ
+
+
+КАФЕДРА ПРОГРАМНОЇ ІНЖЕНЕРІЇ
+
+
+
+
+Звіт
+з практичної роботи №4
+   
+
+
+
+
+
+Виконав:                                                                   Перевірив:
+ст. гр. ПЗПІ-23-2                       			  ст. викладач кафедри ПІ
+Семьонов Олег					 	  Сокорчук Ігор Петрович
+
+
+
+
+
+
+
+
+Харків 2024
+4.1 Мета роботи
+    1. Ознайомитися з роботою SharedPreferences для збереження налаштувань застосунку. 
+    2. Опанувати роботу з базою даних SQLite: створення, збереження та отримання даних. 
+    3. Вивчити роботу з файлами для збереження даних у внутрішній або зовнішній пам'яті. 
+
+4.2 Хід роботи
+	Створимо новий проект з шаблоном Empty Views Activity.
+Почнемо з SharedPreferences — це простий спосіб зберігати пари "ключ-значення", які зазвичай використовуються для збереження налаштувань застосунку або невеликих даних користувача. Файл налаштувань зберігається у вигляді XML у внутрішній пам'яті застосунку.
+	Ініціалізуємо в основній розмітці змінні та методи для роботи з цим способом:
+
+Name = findViewById(R.id.editTextName);
+Age = findViewById(R.id.editTextAge);
+button = findViewById(R.id.button);
+sp = getSharedPreferences("Preferences",MODE_PRIVATE);
+
+Та два методи для збереження та загрузки інформації:
+button.setOnClickListener(new View.OnClickListener() {
+    @Override
+    public void onClick(View v) {
+        String name = Name.getText().toString();
+        String age = Age.getText().toString();
+
+        if (!name.isEmpty() && !age.isEmpty()){
+            SharedPreferences.Editor editor = sp.edit();
+            editor.putString("Name", name);
+            editor.putString("Age", age);
+            editor.apply();
+
+            Toast.makeText(MainActivity.this,"Saved", Toast.LENGTH_SHORT).show();
+            loadData();
+
+        }
+        else{
+            Toast.makeText(MainActivity.this,"Enter name and age", Toast.LENGTH_SHORT).show();
+
+        }
+    }
+});
+public void loadData() {
+    String name = sp.getString("Name","No Name");
+    String age = sp.getString("Age", "No Age");
+
+    Name.setText(name);
+    Age.setText(age);
+}
+
+	Наступним способом буде використання бази даних SQLite. SQLite є вбудованою реляційною базою даних, яка дозволяє працювати з великими обсягами структурованих даних. SQLite не вимагає налаштування сервера, і дані зберігаються локально у файлі. - Для роботи з SQLite у Android зазвичай створюється клас, який успадковується від SQLiteOpenHelper.
+
+Створимо клас для роботи з БД.
+public class DBHelper extends SQLiteOpenHelper {
+    public DBHelper(Context context){
+        super(context, "MyDB", null,1 );
+    }
+
+    @Override
+    public void onCreate(SQLiteDatabase db){
+        db.execSQL("CREATE TABLE users (id INTEGER PRIMARY KEY, name TEXT, age INTEGER)");
+    }
+
+    @Override
+    public void onUpgrade(SQLiteDatabase db, int oldVersion, int newVersion) {
+
+    }
+
+та модель користувача для збереження:
+
+public class User{
+    private String name;
+    private int age;
+
+    public User(String name, int age){
+        this.name = name;
+        this.age = age;
+    }
+
+    public String getName(){
+        return name;
+    }
+    public int getAge(){
+        return age;
+    }
+}
+Повний код буде у ДОДАТОК А.
+
+	Перейдемо до активності з базою даних. Ініціалізуємо потрібні змінні та БД:
+
+dbHelper = new DBHelper(this);
+rvUsers = findViewById(R.id.userList);
+Button buttonAddUser = findViewById(R.id.buttonAddUser);
+
+rvUsers.setLayoutManager(new LinearLayoutManager(this));
+
+loadUsers();
+
+buttonAddUser.setOnClickListener(v -> showAddUserDialog());
+
+Також додамо метод для загрузки данних і діалогу з додаванням нового юзера:
+
+private void loadUsers() {
+    List<DBHelper.User> users = dbHelper.getAllUsers();
+    userAdapter = new UserAdapter(users);
+    rvUsers.setAdapter(userAdapter);
+}
+
+private void showAddUserDialog() {
+    AlertDialog.Builder builder = new AlertDialog.Builder(this);
+    LayoutInflater inflater = getLayoutInflater();
+    View dialogView = inflater.inflate(R.layout.dialog_database, null);
+    builder.setView(dialogView);
+
+    EditText editTextName = dialogView.findViewById(R.id.editTextDialogName);
+    EditText editTextAge = dialogView.findViewById(R.id.editTextDialogAge);
+    Button buttonSave = dialogView.findViewById(R.id.buttonDialogSave);
+    Button buttonCancel = dialogView.findViewById(R.id.buttonDialogCancel);
+
+    AlertDialog dialog = builder.create();
+
+    buttonSave.setOnClickListener(v -> {
+        String name = editTextName.getText().toString();
+        String ageText = editTextAge.getText().toString();
+
+        if (!name.isEmpty() && !ageText.isEmpty()) {
+            int age = Integer.parseInt(ageText);
+            dbHelper.addUser(name, age);
+            dialog.dismiss();
+            loadUsers();
+        }
+    });
+
+    buttonCancel.setOnClickListener(v -> dialog.dismiss());
+
+    dialog.show();
+}
+
+Повний код буде у ДОДАТОК В.
+
+	Останнім кроком буде реалізація збереження інформації через файл.Android дозволяє зберігати дані у внутрішній або зовнішній пам'яті пристрою за допомогою файлової системи.
+
+Ініціалізуємо змінні та функцію для кнопок:
+EditText input = findViewById(R.id.editTextInput);
+Button buttonSave = findViewById(R.id.buttonSave);
+Button buttonRead = findViewById(R.id.buttonRead);
+TextView output = findViewById(R.id.textViewOutput);
+
+buttonSave.setOnClickListener(v -> {
+    String textToSave = input.getText().toString();
+    if (!textToSave.isEmpty()){
+        saveToFile(fileName, textToSave);
+        input.setText("");
+    }
+    else{
+        Toast.makeText(this, "Type smth in input",
+                Toast.LENGTH_SHORT).show();
+    }
+});
+buttonRead.setOnClickListener(v -> {
+    String fileContent = readFile(fileName);
+    output.setText(fileContent);
+});
+
+І додамо методи для збереження у файл і загрузки з нього:
+private void saveToFile(String fileName, String data){
+    try (FileOutputStream fos = openFileOutput(fileName, Context.MODE_PRIVATE)) {
+        fos.write(data.getBytes());
+        fos.close();
+        Toast.makeText(this, "Data saved successfully", Toast.LENGTH_SHORT).show();
+    } catch (IOException e) {
+        Toast.makeText(this, "Error " , Toast.LENGTH_LONG).show();
+    }
+}
+private String readFile(String fileName){
+    StringBuilder fileContent = new StringBuilder();
+    try (FileInputStream fis = openFileInput(fileName)) {
+        int content;
+        while ((content = fis.read()) != -1) {
+            fileContent.append((char) content);
+        }
+        Toast.makeText(this, "Data read successfully", Toast.LENGTH_SHORT).show();
+    } catch (IOException e) {
+        Toast.makeText(this, "Error", Toast.LENGTH_LONG).show();
+    }
+    return fileContent.toString();
+}
+
+Повний код буде у ДОДАТОК С
+
+4.3 Висновки
+Під час виконання практичної роботи  було ознайомлено з 3 способами збереження інформації додатку, а саме: SharedPreferences, SQLite та за допомогою файлів.
+Відеозвіт. URL:https://youtu.be/j-WMxsJYQio 
+ 
+Використані джерела:
+1. SharedPreferences. URL: https://developer.android.com/reference/android/content/SharedPreferences#contains(java.lang.String)
+2.Save data using SQLite. URL: https://developer.android.com/training/data-storage/sqlite 
+3.Data and file storage overview.  URL: https://developer.android.com/training/data-storage
+
+
+ДОДАТОК А (код класу DBHelper)
+package com.nuresemonovoleh.android_pzpi_23_2_semonov_oleh_practtask4;
+
+import android.annotation.SuppressLint;
+import android.content.ContentValues;
+import android.content.Context;
+import android.database.Cursor;
+import android.database.sqlite.SQLiteDatabase;
+import android.database.sqlite.SQLiteOpenHelper;
+
+import java.util.ArrayList;
+import java.util.List;
+
+public class DBHelper extends SQLiteOpenHelper {
+    public DBHelper(Context context){
+        super(context, "MyDB", null,1 );
+    }
+
+    @Override
+    public void onCreate(SQLiteDatabase db){
+        db.execSQL("CREATE TABLE users (id INTEGER PRIMARY KEY, name TEXT, age INTEGER)");
+    }
+
+    @Override
+    public void onUpgrade(SQLiteDatabase db, int oldVersion, int newVersion) {
+
+    }
+
+    public class User{
+        private String name;
+        private int age;
+
+        public User(String name, int age){
+            this.name = name;
+            this.age = age;
+        }
+
+        public String getName(){
+            return name;
+        }
+        public int getAge(){
+            return age;
+        }
+    }
+
+    public void addUser(String Name, int Age){
+        SQLiteDatabase db = this.getWritableDatabase();
+        ContentValues values = new ContentValues();
+        values.put("name", Name);
+        values.put("age",Age);
+        db.insert("users",null,values);
+        db.close();
+    }
+
+    public List<User> getAllUsers(){
+
+        List<User> userList = new ArrayList<>();
+        SQLiteDatabase db = this.getReadableDatabase();
+
+        Cursor cursor = db.query("users",null,null,
+                null,null,null,null);
+
+        cursor.moveToFirst();
+        while (!cursor.isAfterLast()){
+            @SuppressLint("Range") String name = cursor.getString(cursor.getColumnIndex("name"));
+            @SuppressLint("Range") int age = cursor.getInt(cursor.getColumnIndex("age"));
+            userList.add(new User(name,age));
+            cursor.moveToNext();
+
+        }
+        cursor.close();
+
+        db.close();
+        return userList;
+    }
+}
+
+
+ДОДАТОК В (активність бази даних)
+
+
+package com.nuresemonovoleh.android_pzpi_23_2_semonov_oleh_practtask4;
+
+import android.content.Intent;
+import android.os.Bundle;
+import android.view.LayoutInflater;
+import android.view.View;
+import android.widget.Adapter;
+import android.widget.Button;
+import android.widget.EditText;
+
+import androidx.activity.EdgeToEdge;
+import androidx.appcompat.app.AlertDialog;
+import androidx.appcompat.app.AppCompatActivity;
+import androidx.core.graphics.Insets;
+import androidx.core.view.ViewCompat;
+import androidx.core.view.WindowInsetsCompat;
+import androidx.recyclerview.widget.LinearLayoutManager;
+import androidx.recyclerview.widget.RecyclerView;
+
+import java.util.List;
+
+public class DBactivity extends AppCompatActivity {
+
+    private DBHelper dbHelper;
+    private RecyclerView rvUsers;
+    private UserAdapter userAdapter;
+
+    @Override
+    protected void onCreate(Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+        EdgeToEdge.enable(this);
+        setContentView(R.layout.database);
+        ViewCompat.setOnApplyWindowInsetsListener(findViewById(R.id.DBMain), (v, insets) -> {
+            Insets systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars());
+            v.setPadding(systemBars.left, systemBars.top, systemBars.right, systemBars.bottom);
+            return insets;
+        });
+        dbHelper = new DBHelper(this);
+        rvUsers = findViewById(R.id.userList);
+        Button buttonAddUser = findViewById(R.id.buttonAddUser);
+
+        rvUsers.setLayoutManager(new LinearLayoutManager(this));
+
+        loadUsers();
+
+        buttonAddUser.setOnClickListener(v -> showAddUserDialog());
+
+
+        Button buttonOpenFileActivity = findViewById(R.id.buttonFileActivity);
+        buttonOpenFileActivity.setOnClickListener(v -> {
+            Intent intent = new Intent(DBactivity.this, FileActivity.class);
+            startActivity(intent);
+        });
+
+    }
+    private void loadUsers() {
+        List<DBHelper.User> users = dbHelper.getAllUsers();
+        userAdapter = new UserAdapter(users);
+        rvUsers.setAdapter(userAdapter);
+    }
+
+    private void showAddUserDialog() {
+        AlertDialog.Builder builder = new AlertDialog.Builder(this);
+        LayoutInflater inflater = getLayoutInflater();
+        View dialogView = inflater.inflate(R.layout.dialog_database, null);
+        builder.setView(dialogView);
+
+        EditText editTextName = dialogView.findViewById(R.id.editTextDialogName);
+        EditText editTextAge = dialogView.findViewById(R.id.editTextDialogAge);
+        Button buttonSave = dialogView.findViewById(R.id.buttonDialogSave);
+        Button buttonCancel = dialogView.findViewById(R.id.buttonDialogCancel);
+
+        AlertDialog dialog = builder.create();
+
+        buttonSave.setOnClickListener(v -> {
+            String name = editTextName.getText().toString();
+            String ageText = editTextAge.getText().toString();
+
+            if (!name.isEmpty() && !ageText.isEmpty()) {
+                int age = Integer.parseInt(ageText);
+                dbHelper.addUser(name, age);
+                dialog.dismiss();
+                loadUsers();
+            }
+        });
+
+        buttonCancel.setOnClickListener(v -> dialog.dismiss());
+
+        dialog.show();
+    }
+
+
+
+}
+
+ДОДАТОК С (код з активністю файлів)
+
+package com.nuresemonovoleh.android_pzpi_23_2_semonov_oleh_practtask4;
+
+import android.content.Context;
+import android.os.Bundle;
+import android.widget.Button;
+import android.widget.EditText;
+import android.widget.TextView;
+import android.widget.Toast;
+
+import androidx.activity.EdgeToEdge;
+import androidx.appcompat.app.AppCompatActivity;
+import androidx.core.graphics.Insets;
+import androidx.core.view.ViewCompat;
+import androidx.core.view.WindowInsetsCompat;
+
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
+import java.io.IOException;
+
+public class FileActivity extends AppCompatActivity {
+
+    private final String fileName = "example.txt";
+
+    @Override
+    protected void onCreate(Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+        EdgeToEdge.enable(this);
+        setContentView(R.layout.activity_file);
+        ViewCompat.setOnApplyWindowInsetsListener(findViewById(R.id.main), (v, insets) -> {
+            Insets systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars());
+            v.setPadding(systemBars.left, systemBars.top, systemBars.right, systemBars.bottom);
+            return insets;
+        });
+
+        EditText input = findViewById(R.id.editTextInput);
+        Button buttonSave = findViewById(R.id.buttonSave);
+        Button buttonRead = findViewById(R.id.buttonRead);
+        TextView output = findViewById(R.id.textViewOutput);
+
+        buttonSave.setOnClickListener(v -> {
+            String textToSave = input.getText().toString();
+            if (!textToSave.isEmpty()){
+                saveToFile(fileName, textToSave);
+                input.setText("");
+            }
+            else{
+                Toast.makeText(this, "Type smth in input",
+                        Toast.LENGTH_SHORT).show();
+            }
+        });
+        buttonRead.setOnClickListener(v -> {
+            String fileContent = readFile(fileName);
+            output.setText(fileContent);
+        });
+    }
+
+
+
+    private void saveToFile(String fileName, String data){
+        try (FileOutputStream fos = openFileOutput(fileName, Context.MODE_PRIVATE)) {
+            fos.write(data.getBytes());
+            fos.close();
+            Toast.makeText(this, "Data saved successfully", Toast.LENGTH_SHORT).show();
+        } catch (IOException e) {
+            Toast.makeText(this, "Error " , Toast.LENGTH_LONG).show();
+        }
+    }
+    private String readFile(String fileName){
+        StringBuilder fileContent = new StringBuilder();
+        try (FileInputStream fis = openFileInput(fileName)) {
+            int content;
+            while ((content = fis.read()) != -1) {
+                fileContent.append((char) content);
+            }
+            Toast.makeText(this, "Data read successfully", Toast.LENGTH_SHORT).show();
+        } catch (IOException e) {
+            Toast.makeText(this, "Error", Toast.LENGTH_LONG).show();
+        }
+        return fileContent.toString();
+    }
+}
+
+
