@@ -1,0 +1,176 @@
+МІНІСТЕРСТВО ОСВІТИ І НАУКИ УКРАЇНИ
+ХАРКІВСЬКИЙ НАЦІОНАЛЬНИЙ УНІВЕРСИТЕТ РАДІОЕЛЕКТРОНІКИ
+
+
+КАФЕДРА ПРОГРАМНОЇ ІНЖЕНЕРІЇ
+
+
+
+
+Звіт
+з лабораторної роботи №4
+   
+
+
+
+
+
+Виконав:                                                                   Перевірив:
+ст. гр. ПЗПІ-23-2                       			  ст. викладач кафедри ПІ
+Семьонов Олег					 	  Сокорчук Ігор Петрович
+
+
+
+
+
+
+
+
+Харків 2024
+4.1 Мета завдання
+Розробити застосунок для ведення нотаток.
+Застосунок повинен дозволяти переглядати список нотаток, створювати нову нотатку, редагувати нотатку та видаляти нотатку. Кожна нотатка повинна мати назву, опис, важливість (три класи), час і дату призначення і картинку (вибирається з галереї).
+У списку нотатки відображаються з іконкою з галереї і часом створення (праворуч зверху більш дрібним шрифтом), а також графічним відображенням класу важливості (іконка з множини).
+Потрібно реалізувати функції додавання, видалення, редагування (без збереження між перезапуск додатку) нотаток.
+Видалення/редагування викликаються з контекстного меню при довгому натисненні, додавання - з основного меню в ActionBar. У ActionBar реалізувати пошук / фільтрація заміток за змістом тексту, а також фільтрацію за важливістю. Текстові елементи користувацького інтерфейсу повинні бути локалізовані українською та англійською мовами.
+
+4.2 Хід роботи
+Створюємо новий проект з шаблоном Empty Views Activity. Так як коду і файлів дуже багато, логічніше всього буде передивитись весь код на GitHub (ДОДАТОК А)
+
+1) Для нотатки створимо відповідний клас:
+
+public class Note {
+    private String title;
+    private String description;
+    private int importance;
+    private String dateTime;
+    private String imageUri;
+
+    public Note(String title, String description, int importance, String dateTime, String imageUri) {
+        this.title = title;
+        this.description = description;
+        this.importance = importance;
+        this.dateTime = dateTime;
+        this.imageUri = imageUri;
+    }
+
+2) На головній сторінці розміщаємо список з прогортанням, ActionBar з додаванням, фільтрацією та пошуком нотатки з відповідним налаштуванням кожного елемента 
+
+4)Далі створимо адаптер для списку нотаток:
+public class NoteAdapter extends RecyclerView.Adapter<NoteAdapter.NoteViewHolder> {
+
+    private List<Note> noteList;
+    private Context context;
+    private int contextMenuPosition;
+
+
+    public NoteAdapter(List<Note> noteList, Context context) {
+        this.noteList = noteList;
+        this.context = context;
+    }
+
+
+    public static class NoteViewHolder extends RecyclerView.ViewHolder {
+        public TextView title, time;
+        public ImageView icon;
+        public View importanceIcon;
+
+        public NoteViewHolder(View itemView) {
+            super(itemView);
+            title = itemView.findViewById(R.id.noteTitle);
+            time = itemView.findViewById(R.id.noteTime);
+            icon = itemView.findViewById(R.id.noteIcon);
+            importanceIcon = itemView.findViewById(R.id.noteImportanceIcon);
+        }
+    }
+
+
+    public int getContextMenuPosition() {
+        return contextMenuPosition;
+    }
+
+    @NonNull
+    @Override
+    public NoteViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
+        View view = LayoutInflater.from(parent.getContext())
+                .inflate(R.layout.note_item, parent, false);
+        return new NoteViewHolder(view);
+    }
+
+    @Override
+    public void onBindViewHolder(@NonNull NoteViewHolder holder, int position) {
+        Note note = noteList.get(position);
+
+
+        holder.title.setText(note.getTitle());
+        holder.time.setText(note.getDateTime());
+
+
+        if (note.getImageUri() != null && !note.getImageUri().isEmpty()) {
+            holder.icon.setImageURI(Uri.parse(note.getImageUri()));
+        } else {
+            holder.icon.setImageResource(R.drawable.ic_launcher_background);
+        }
+
+
+        int importanceColor = getImportanceColor(note.getImportance());
+        holder.importanceIcon.setBackgroundColor(importanceColor);
+
+
+        holder.itemView.setOnClickListener(v -> {
+            Intent intent = new Intent(context, ViewNote.class);
+            intent.putExtra("title", note.getTitle());
+            intent.putExtra("description", note.getDescription());
+            intent.putExtra("importance", note.getImportance());
+            intent.putExtra("dateTime", note.getDateTime());
+            intent.putExtra("imageUri", note.getImageUri());
+            context.startActivity(intent);
+        });
+
+
+        holder.itemView.setOnLongClickListener(v -> {
+            contextMenuPosition = holder.getAdapterPosition();
+            ((MainActivity) context).openContextMenu(v);
+            return true;
+        });
+    }
+
+    @Override
+    public int getItemCount() {
+        return noteList.size();
+    }
+
+
+    private int getImportanceColor(int importance) {
+        switch (importance) {
+            case 1:
+                return context.getColor(R.color.low_importance);
+            case 2:
+                return context.getColor(R.color.medium_importance);
+            case 3:
+                return context.getColor(R.color.high_importance);
+            default:
+                return context.getColor(R.color.default_importance);
+        }
+    }
+
+
+4) Наступним кроком буде додавання активності для додавання/редагування нотатки 
+
+5)Додамо активність для перегляду нотатки 
+
+6)Також налаштуємо локалізацію англійською та українською мовами 
+
+Висновки:
+Після опрацювання лабораторної роботи було створено додаток для керування нотатками з фільтрацією та пошуком, а також зі зручним перекладом в залежності від мови пристрою
+Відеозвіт. URL: https://youtu.be/28OdkuDjFPI 
+
+Використані джерела
+1. Create dynamic lists with RecyclerView. URL: https://developer.android.com/develop/ui/views/layout/recyclerview
+2. Add images to your Android app. URL: https://developer.android.com/codelabs/basic-android-kotlin-compose-add-images#0
+3. Intent. URL: https://developer.android.com/reference/android/content/Intent
+
+ДОДАТОК А 
+
+GitHub. URL: https://github.com/NureSemonovOleh/android-pzpi-23-2-semonov-oleh/tree/main/LabTask4 
+
