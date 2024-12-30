@@ -1,0 +1,1322 @@
+МІНІСТЕРСТВО ОСВІТИ І НАУКИ УКРАЇНИ
+ХАРКІВСЬКИЙ НАЦІОНАЛЬНИЙ УНІВЕРСИТЕТ РАДІОЕЛЕКТРОНІКИ
+
+
+КАФЕДРА ПРОГРАМНОЇ ІНЖЕНЕРІЇ
+
+
+
+
+Звіт
+з лабораторної роботи №5
+   
+
+
+
+
+
+Виконав:                                                                   Перевірив:
+ст. гр. ПЗПІ-23-2                       			  ст. викладач кафедри ПІ
+Семьонов Олег					 	  Сокорчук Ігор Петрович
+
+
+
+
+
+
+
+
+Харків 2024
+5.1 Мета заняття
+
+Доповнити завдання №4 наступними функціями: 
+    • реалізувати різне відображення для портретної та ланшафтної орієнтації екрану за допомогою тих самих фрагментів; 
+    • створити дві редаговані теми (тло, гарнітура шрифту, колір тексту тощо) і застосовувати їх в залежності від налаштувань програми. 
+    • додати можливість задавати в налаштуваннях програми розмір шрифту. 
+    • Переробити завдання №4 так, щоб дані нотаток зберігалися у базі даних SQLite
+Додатково було зроблено функцію повідомлень.
+
+5.2 Хід роботи
+
+	Відкриємо наш проект з лб4 та почнемо переробляти файли розміток. Основні файли розміток мають мати ландшафтну версію. Зробимо це та налаштуємо елементи всередині, наприклад:
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    tools:context=".MainActivity">
+
+
+    <androidx.appcompat.widget.Toolbar
+        android:id="@+id/toolbar"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:background="@android:color/transparent"
+        android:elevation="4dp"
+        android:theme="@style/ThemeOverlay.AppCompat.Dark.ActionBar"
+        android:title="@string/title" />
+
+
+    <androidx.recyclerview.widget.RecyclerView
+        android:id="@+id/recyclerViewNotes"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:clipToPadding="false"
+        android:padding="8dp"
+        tools:listitem="@layout/note_item" />
+
+    <include layout="@layout/note_item" />
+
+</LinearLayout>
+
+
+Всі тексти ландшафтних файлів розмітки будуть у ДОДАТОК А.
+
+	Наступним кроком було створення власних тем на вибір, а також вибір розміру шрифта. В моєму випадку це було зроблене двума діалогами, тому було створено 6 тем (2 теми, кожна з яких має по 3 шрифти), наприклад теми з середнім розміром шрифта. Також був світч кейс з вибором системної теми, де тема підлаштовувалась сама під налаштування системи.
+Світла тема:
+<style name="AppTheme_Light_Medium" parent="Theme.Material3.Light">
+    <item name="colorPrimary">@color/purple_500</item>
+    <item name="colorPrimaryVariant">@color/purple_700</item>
+    <item name="colorSecondary">@color/teal_200</item>
+    <item name="android:colorBackground">@color/white</item>
+    <item name="colorSurface">@color/white</item>
+    <item name="android:textColorPrimary">@color/black</item>
+    <item name="android:textColorSecondary">@color/gray</item>
+    <item name="android:fontFamily">sans-serif</item>
+    <item name="android:textSize">16sp</item>
+</style>
+Темна тема:
+<style name="AppTheme_Dark_Medium" parent="Theme.Material3.Dark">
+    <item name="colorPrimary">@color/light_purple</item>
+    <item name="colorPrimaryVariant">@color/purple_700</item>
+    <item name="colorSecondary">@color/teal_200</item>
+    <item name="android:colorBackground">@color/black</item>
+    <item name="colorSurface">@color/black</item>
+    <item name="android:textColorPrimary">@color/white</item>
+    <item name="android:textColorSecondary">@color/gray</item>
+    <item name="android:fontFamily">sans-serif</item>
+    <item name="android:textSize">16sp</item>
+</style>
+
+Маючи заготовки тем, було додано іконку налаштувань, при натиснені на яку викликаються два діалоги з вибором налаштувань:
+
+private void showThemeSettingDialog(){
+    String[] themes = {"Light Theme", "Dark Theme", "System Default"};
+    new AlertDialog.Builder(this)
+            .setTitle("Choose Your Destiny")
+            .setSingleChoiceItems(themes, Theme.getSavedTheme(this), ((dialog, which) -> {
+                Theme.saveTheme(this, which);
+                dialog.dismiss();
+                showFontSizeSettingDialog();
+            })).show();
+}
+private void showFontSizeSettingDialog() {
+    String[] fontSizes = {"Small", "Medium", "Big"};
+
+    new AlertDialog.Builder(this)
+            .setTitle("Choose Font Size")
+            .setSingleChoiceItems(fontSizes, Theme.getSavedFontSize(this), (dialog, which) -> {
+                Theme.saveFontSize(this, which);
+                dialog.dismiss();
+                recreate();
+            })
+            .show();
+}
+
+Дизайнерська частина закінчилася, тому перейдемо до бази даних. Першим кроком було створення класу БД з базовими методами:
+@Override
+public void onCreate(SQLiteDatabase db) {
+    String createTable = "CREATE TABLE " + TABLE_NAME + " (" +
+            COLUMN_ID + " INTEGER PRIMARY KEY AUTOINCREMENT, " +
+            COLUMN_TITLE + " TEXT, " +
+            COLUMN_DESCRIPTION + " TEXT, " +
+            COLUMN_IMPORTANCE + " INTEGER, " +
+            COLUMN_DATE_TIME + " TEXT, " +
+            COLUMN_IMAGE_URI + " TEXT)";
+    db.execSQL(createTable);
+}
+
+@Override
+public void onUpgrade(SQLiteDatabase db, int oldVersion, int newVersion) {
+    db.execSQL("DROP TABLE IF EXISTS " + TABLE_NAME);
+    onCreate(db);
+}
+
+Тобто за допомогою цих двух методів стало можливим створювати та оновлювати БД. Повний код класу у ДОДАТОК В.
+
+У файлі головної активності замість створення двух списків була ініціалізація одного з отриманням всіх нотаток з БД. Також було написано метод для загрузки нотаток, який буде використано не один раз:
+private void loadNotes() {
+    List<Note> notesFromDb = dbHelper.getAllNotes();
+    if (notesFromDb != null) {
+        noteList.clear();
+        noteList.addAll(notesFromDb);
+
+        noteAdapter = new NoteAdapter(noteList, this);
+        recyclerViewNotes.setAdapter(noteAdapter);
+    } else {
+        Toast.makeText(this, "Zero Notes", Toast.LENGTH_SHORT).show();
+    }
+}
+
+Роботоспособність активності лише змінилась з прив’язки даних до двух листів до витягування і додавання інформації з БД.
+
+Також змінився метод додавання та редагування нотатки (основне, це зміна позиції нотатки на вибір за айді):
+if (noteId == -1) {
+    long newNoteId = dbHelper.addNote(new Note(
+            titleEditText.getText().toString(),
+            descriptionEditText.getText().toString(),
+            importanceSpinner.getSelectedItemPosition() + 1,
+            selectedDate + " " + selectedTime,
+            imageUri != null ? imageUri.toString() : null
+    ));
+
+    Intent resultIntent = new Intent();
+    resultIntent.putExtra("id", newNoteId);
+    setResult(RESULT_OK, resultIntent);
+    scheduleNotificationsForNote(title, description, newNoteId);
+} else {
+    dbHelper.updateNote(new Note(noteId, title, description, importance, dateTime, imageUriString));
+    Intent resultIntent = new Intent();
+    resultIntent.putExtra("id", noteId);
+    setResult(RESULT_OK, resultIntent);
+    scheduleNotificationsForNote(title,description,noteId);
+}
+
+
+
+В цілому БД була реалізована і налаштована.
+
+Додатковим кроком було додавання повідомлень у шторці зверху.
+
+Для цього було створено окремий клас з 2 методами, перший викликається коли система передає повідомлення, а других створює канал повідомлень для відображення:
+@Override
+public void onReceive(Context context, Intent intent) {
+    String title = intent.getStringExtra("title");
+    String datetime = intent.getStringExtra("datetime");
+    int notificationId = intent.getIntExtra("notificationId", 0);
+
+    System.out.println("Received Data: Title = " + title + ", DateTime = " + datetime);
+
+    NotificationCompat.Builder builder = new NotificationCompat.Builder(context, "note_reminder_channel")
+            .setSmallIcon(R.drawable.ic_launcher_foreground)
+            .setContentTitle(title)
+            .setContentText("Planned on: " + datetime)
+            .setPriority(NotificationCompat.PRIORITY_HIGH)
+            .setAutoCancel(true);
+
+    NotificationManagerCompat notificationManager = NotificationManagerCompat.from(context);
+    notificationManager.notify(notificationId, builder.build());
+}
+public static void createNotificationChannel(Context context) {
+    if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
+        NotificationChannel channel = new NotificationChannel(
+                "note_reminder_channel",
+                "Note Reminders",
+                NotificationManager.IMPORTANCE_HIGH
+        );
+        channel.setDescription("Notifications");
+        NotificationManager manager = context.getSystemService(NotificationManager.class);
+        if (manager != null) {
+            manager.createNotificationChannel(channel);
+        }
+    }
+}
+
+Також у активності додавання/редагування було додано два методи для реалізації нотифікацій, а саме визначення часу для 3 нагадувань та передача у метод, що викликає нотифікацію коли настає час:
+private void scheduleNotificationsForNote(String title, String description, long noteId) {
+    try {
+        String dateTime = selectedDate + " " + selectedTime;
+        long eventTime = Note.parseDateTime(dateTime).getTime();
+
+        long oneDayBefore = eventTime - (24 * 60 * 60 * 1000);
+        long threeHoursBefore = eventTime - (3 * 60 * 60 * 1000);
+        long oneHourBefore = eventTime - (1 * 60 * 60 * 1000);
+
+        if (oneDayBefore > System.currentTimeMillis()) {
+            scheduleNotification(this, title, description, oneDayBefore, (int) (noteId * 1000 + 1));
+        }
+        if (threeHoursBefore > System.currentTimeMillis()) {
+            scheduleNotification(this, title, description, threeHoursBefore, (int) (noteId * 1000 + 2));
+        }
+        if (oneHourBefore > System.currentTimeMillis()) {
+            scheduleNotification(this, title, description, oneHourBefore, (int) (noteId * 1000 + 3));
+        }
+    } catch (ParseException e) {
+        e.printStackTrace();
+        Toast.makeText(this, "Error in Format", Toast.LENGTH_LONG).show();
+    }
+}
+
+
+
+private void scheduleNotification(Context context, String title, String dateTime, long timeInMillis, int notificationId) {
+    dateTime = selectedDate + " " + selectedTime;
+    Intent intent = new Intent(context, Notification.class);
+    intent.putExtra("title", title);
+    intent.putExtra("datetime", dateTime);
+    intent.putExtra("notificationId", notificationId);
+
+    PendingIntent pendingIntent = PendingIntent.getBroadcast(
+            context,
+            notificationId,
+            intent,
+            PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE
+    );
+
+    AlarmManager alarmManager = (AlarmManager) context.getSystemService(Context.ALARM_SERVICE);
+    if (alarmManager != null) {
+        alarmManager.setExact(AlarmManager.RTC_WAKEUP, timeInMillis, pendingIntent);
+    }
+}
+
+Отже, всі пункти і додатковий пункт були виконані і протестовані успішно
+5.3 Висновки
+Під час виконання роботи було навчено використання діалогових вікон, бази даних для збереження даних та робота з нотифікаціями
+Відеозвіт. URL:https://youtu.be/XLarm0ytxKQ 
+
+
+ДОДАТКИ
+
+ДОДАТОК А ( Файли розмітки)
+
+<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:padding="16dp">
+
+
+    <EditText
+        android:id="@+id/editTextTitle"
+        android:layout_width="173dp"
+        android:layout_height="50dp"
+        android:layout_marginEnd="180dp"
+        android:hint="@string/title"
+        app:layout_constraintEnd_toEndOf="@+id/editTextDescription"
+        app:layout_constraintTop_toTopOf="parent" />
+
+    <EditText
+        android:id="@+id/editTextDescription"
+        android:layout_width="355dp"
+        android:layout_height="58dp"
+        android:hint="@string/description"
+        android:inputType="textMultiLine"
+        android:lines="4"
+        app:layout_constraintEnd_toEndOf="@+id/spinnerImportance"
+        app:layout_constraintTop_toBottomOf="@+id/editTextTitle" />
+
+
+    <ImageView
+        android:id="@+id/imageViewNote"
+        android:layout_width="317dp"
+        android:layout_height="205dp"
+        android:layout_gravity="right"
+        android:layout_marginTop="48dp"
+
+        android:background="#000000"
+        android:backgroundTint="#050202"
+        android:contentDescription="Image"
+        android:scaleType="centerCrop"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintTop_toTopOf="parent" />
+
+    <Button
+        android:id="@+id/buttonSelectDate"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="12dp"
+        android:layout_marginEnd="32dp"
+        android:text="@string/select_date"
+        app:layout_constraintEnd_toStartOf="@+id/textViewDate"
+        app:layout_constraintTop_toBottomOf="@+id/buttonSelectTime" />
+
+    <TextView
+        android:id="@+id/textViewDate"
+        android:layout_width="142dp"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="44dp"
+        android:layout_marginEnd="36dp"
+        android:text="@string/date_not_selected"
+        app:layout_constraintEnd_toStartOf="@+id/imageViewNote"
+        app:layout_constraintTop_toBottomOf="@+id/textViewTime" />
+
+    <Button
+        android:id="@+id/buttonSelectTime"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="28dp"
+        android:layout_marginEnd="28dp"
+        android:text="@string/select_time"
+        app:layout_constraintEnd_toStartOf="@+id/textViewTime"
+        app:layout_constraintTop_toBottomOf="@+id/importanceLabel" />
+
+    <TextView
+        android:id="@+id/textViewTime"
+        android:layout_width="124dp"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="36dp"
+        android:layout_marginEnd="56dp"
+        android:text="@string/time_not_selected"
+        app:layout_constraintEnd_toStartOf="@+id/imageViewNote"
+        app:layout_constraintTop_toBottomOf="@+id/spinnerImportance" />
+
+    <Button
+        android:id="@+id/buttonSave"
+        android:layout_width="185dp"
+        android:layout_height="58dp"
+        android:layout_gravity="center"
+        android:layout_marginEnd="52dp"
+        android:text="@string/save"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/imageViewNote" />
+
+    <Spinner
+        android:id="@+id/spinnerImportance"
+        android:layout_width="225dp"
+        android:layout_height="45dp"
+        android:entries="@array/importance_array"
+        app:layout_constraintEnd_toStartOf="@+id/imageViewNote"
+        app:layout_constraintTop_toBottomOf="@+id/editTextDescription" />
+
+    <TextView
+        android:id="@+id/importanceLabel"
+        android:layout_width="98dp"
+        android:layout_height="44dp"
+        android:text="@string/importance"
+        android:gravity="center"
+        android:textSize="16sp"
+        app:layout_constraintEnd_toStartOf="@+id/spinnerImportance"
+        app:layout_constraintTop_toBottomOf="@+id/editTextDescription" />
+</androidx.constraintlayout.widget.ConstraintLayout>
+
+
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    tools:context=".MainActivity">
+
+
+    <androidx.appcompat.widget.Toolbar
+        android:id="@+id/toolbar"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:background="@android:color/transparent"
+        android:elevation="4dp"
+        android:theme="@style/ThemeOverlay.AppCompat.Dark.ActionBar"
+        android:title="@string/title" />
+
+
+    <androidx.recyclerview.widget.RecyclerView
+        android:id="@+id/recyclerViewNotes"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:clipToPadding="false"
+        android:padding="8dp"
+        tools:listitem="@layout/note_item" />
+
+    <include layout="@layout/note_item" />
+
+</LinearLayout>
+
+
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/main"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:padding="16dp">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="100dp">
+
+        <TextView
+        android:id="@+id/textViewTitle"
+        android:layout_width="175dp"
+        android:layout_height="wrap_content"
+        android:paddingBottom="8dp"
+        android:text="Title"
+        android:textSize="24sp" />
+
+        <TextView
+            android:id="@+id/textViewDescription"
+            android:layout_width="521dp"
+            android:layout_height="140dp"
+            android:text="Description"
+            android:textSize="16sp" />
+
+    </LinearLayout>
+
+    <TextView
+        android:id="@+id/textViewDateTime"
+        android:layout_width="179dp"
+        android:layout_height="wrap_content"
+        android:paddingBottom="8dp"
+        android:text="Date and Time"
+        android:textSize="16sp" />
+
+    <TextView
+        android:id="@+id/textViewImportance"
+        android:layout_width="179dp"
+        android:layout_height="wrap_content"
+        android:paddingBottom="8dp"
+        android:text="Importance"
+        android:textSize="16sp" />
+
+    <ImageView
+        android:id="@+id/imageViewNote"
+        android:layout_width="209dp"
+        android:layout_height="173dp"
+        android:layout_marginBottom="16dp"
+        android:scaleType="centerCrop" />
+
+
+</LinearLayout>
+
+ДОДАТОК В ( Клас БД)
+
+package com.nuresemonovoleh.android_pzpi_23_2_semonov_oleh_labtask5;
+
+import android.content.ContentValues;
+import android.content.Context;
+import android.database.Cursor;
+import android.database.sqlite.SQLiteDatabase;
+import android.database.sqlite.SQLiteOpenHelper;
+
+
+
+import java.util.ArrayList;
+import java.util.List;
+
+public class DBHelper extends SQLiteOpenHelper {
+
+    private static final String DATABASE_NAME = "notes.db";
+    private static final int DATABASE_VERSION = 1;
+
+    private static final String TABLE_NAME = "notes";
+    private static final String COLUMN_ID = "id";
+    private static final String COLUMN_TITLE = "title";
+    private static final String COLUMN_DESCRIPTION = "description";
+    private static final String COLUMN_IMPORTANCE = "importance";
+    private static final String COLUMN_DATE_TIME = "date_time";
+    private static final String COLUMN_IMAGE_URI = "image_uri";
+
+    public DBHelper(Context context) {
+        super(context, DATABASE_NAME, null, DATABASE_VERSION);
+    }
+
+    @Override
+    public void onCreate(SQLiteDatabase db) {
+        String createTable = "CREATE TABLE " + TABLE_NAME + " (" +
+                COLUMN_ID + " INTEGER PRIMARY KEY AUTOINCREMENT, " +
+                COLUMN_TITLE + " TEXT, " +
+                COLUMN_DESCRIPTION + " TEXT, " +
+                COLUMN_IMPORTANCE + " INTEGER, " +
+                COLUMN_DATE_TIME + " TEXT, " +
+                COLUMN_IMAGE_URI + " TEXT)";
+        db.execSQL(createTable);
+    }
+
+    @Override
+    public void onUpgrade(SQLiteDatabase db, int oldVersion, int newVersion) {
+        db.execSQL("DROP TABLE IF EXISTS " + TABLE_NAME);
+        onCreate(db);
+    }
+
+    public long addNote(Note note) {
+        SQLiteDatabase db = this.getWritableDatabase();
+        ContentValues values = new ContentValues();
+        values.put(COLUMN_TITLE, note.getTitle());
+        values.put(COLUMN_DESCRIPTION, note.getDescription());
+        values.put(COLUMN_IMPORTANCE, note.getImportance());
+        values.put(COLUMN_DATE_TIME, note.getDateTime());
+        values.put(COLUMN_IMAGE_URI, note.getImageUri());
+
+        return db.insert(TABLE_NAME, null, values);
+    }
+
+    public int updateNote(Note note) {
+        SQLiteDatabase db = this.getWritableDatabase();
+        ContentValues values = new ContentValues();
+        values.put(COLUMN_TITLE, note.getTitle());
+        values.put(COLUMN_DESCRIPTION, note.getDescription());
+        values.put(COLUMN_IMPORTANCE, note.getImportance());
+        values.put(COLUMN_DATE_TIME, note.getDateTime());
+        values.put(COLUMN_IMAGE_URI, note.getImageUri());
+        return db.update(TABLE_NAME, values, COLUMN_ID + " = ?", new String[]{String.valueOf(note.getId())});
+    }
+
+
+    public void deleteNote(int id) {
+        SQLiteDatabase db = this.getWritableDatabase();
+        db.delete(TABLE_NAME, COLUMN_ID + " = ?", new String[]{String.valueOf(id)});
+    }
+
+    public List<Note> getAllNotes() {
+        List<Note> notes = new ArrayList<>();
+        SQLiteDatabase db = this.getReadableDatabase();
+
+        Cursor cursor = db.query(TABLE_NAME, null, null, null, null, null, null);
+
+        if (cursor != null) {
+            while (cursor.moveToNext()) {
+                int id = cursor.getInt(cursor.getColumnIndexOrThrow(COLUMN_ID));
+                String title = cursor.getString(cursor.getColumnIndexOrThrow(COLUMN_TITLE));
+                String description = cursor.getString(cursor.getColumnIndexOrThrow(COLUMN_DESCRIPTION));
+                int importance = cursor.getInt(cursor.getColumnIndexOrThrow(COLUMN_IMPORTANCE));
+                String dateTime = cursor.getString(cursor.getColumnIndexOrThrow(COLUMN_DATE_TIME));
+                String imageUri = cursor.getString(cursor.getColumnIndexOrThrow(COLUMN_IMAGE_URI));
+
+                notes.add(new Note(id, title, description, importance, dateTime, imageUri));
+            }
+            cursor.close();
+        }
+
+        return notes;
+    }
+    public Note getNoteById(int id) {
+        SQLiteDatabase db = this.getReadableDatabase();
+        Cursor cursor = db.query(TABLE_NAME, null, COLUMN_ID + " = ?", new String[]{String.valueOf(id)}, null, null, null);
+
+        if (cursor != null && cursor.moveToFirst()) {
+            String title = cursor.getString(cursor.getColumnIndexOrThrow(COLUMN_TITLE));
+            String description = cursor.getString(cursor.getColumnIndexOrThrow(COLUMN_DESCRIPTION));
+            int importance = cursor.getInt(cursor.getColumnIndexOrThrow(COLUMN_IMPORTANCE));
+            String dateTime = cursor.getString(cursor.getColumnIndexOrThrow(COLUMN_DATE_TIME));
+            String imageUri = cursor.getString(cursor.getColumnIndexOrThrow(COLUMN_IMAGE_URI));
+            cursor.close();
+            return new Note(id, title, description, importance, dateTime, imageUri);
+        }
+        return null;
+    }
+
+    public List<Note> searchNotes(String query) {
+        List<Note> notes = new ArrayList<>();
+        SQLiteDatabase db = this.getReadableDatabase();
+
+        String searchQuery = "SELECT * FROM " + TABLE_NAME + " WHERE " +
+                COLUMN_TITLE + " LIKE ? OR " +
+                COLUMN_DESCRIPTION + " LIKE ?";
+
+        String likeQuery = "%" + query + "%";
+        Cursor cursor = db.rawQuery(searchQuery, new String[]{likeQuery, likeQuery});
+
+        if (cursor != null) {
+            while (cursor.moveToNext()) {
+                int id = cursor.getInt(cursor.getColumnIndexOrThrow(COLUMN_ID));
+                String title = cursor.getString(cursor.getColumnIndexOrThrow(COLUMN_TITLE));
+                String description = cursor.getString(cursor.getColumnIndexOrThrow(COLUMN_DESCRIPTION));
+                int importance = cursor.getInt(cursor.getColumnIndexOrThrow(COLUMN_IMPORTANCE));
+                String dateTime = cursor.getString(cursor.getColumnIndexOrThrow(COLUMN_DATE_TIME));
+                String imageUri = cursor.getString(cursor.getColumnIndexOrThrow(COLUMN_IMAGE_URI));
+
+                notes.add(new Note(id, title, description, importance, dateTime, imageUri));
+            }
+            cursor.close();
+        }
+
+        db.close();
+        return notes;
+    }
+}
+
+
+ДОДАТОК С (інші файли логіки)
+
+package com.nuresemonovoleh.android_pzpi_23_2_semonov_oleh_labtask5;
+
+import android.app.AlarmManager;
+import android.app.DatePickerDialog;
+import android.app.PendingIntent;
+import android.app.TimePickerDialog;
+import android.content.Context;
+import android.content.Intent;
+import android.net.Uri;
+import android.os.Bundle;
+import android.view.ViewGroup;
+import android.widget.Button;
+import android.widget.EditText;
+import android.widget.ImageView;
+import android.widget.Spinner;
+import android.widget.TextView;
+import android.widget.Toast;
+
+import androidx.appcompat.app.AppCompatActivity;
+
+import java.text.ParseException;
+import java.text.SimpleDateFormat;
+import java.util.Calendar;
+import java.util.Date;
+import java.util.Locale;
+
+public class AddEditNote extends AppCompatActivity {
+
+    private EditText titleEditText, descriptionEditText;
+    private Spinner importanceSpinner;
+    private ImageView imageView;
+    private Button saveButton, dateButton, timeButton;
+    private TextView dateTextView, timeTextView;
+
+    private static final int PICK_IMAGE_REQUEST = 100;
+    private Uri imageUri;
+
+    private String selectedDate = "";
+    private String selectedTime = "";
+    private int noteId = -1;
+
+    @Override
+    protected void onCreate(Bundle savedInstanceState) {
+        Theme.applyTheme(this);
+        super.onCreate(savedInstanceState);
+        setContentView(R.layout.activity_add_edit_note);
+
+        titleEditText = findViewById(R.id.editTextTitle);
+        descriptionEditText = findViewById(R.id.editTextDescription);
+        importanceSpinner = findViewById(R.id.spinnerImportance);
+        imageView = findViewById(R.id.imageViewNote);
+        saveButton = findViewById(R.id.buttonSave);
+        dateButton = findViewById(R.id.buttonSelectDate);
+        timeButton = findViewById(R.id.buttonSelectTime);
+        dateTextView = findViewById(R.id.textViewDate);
+        timeTextView = findViewById(R.id.textViewTime);
+
+        DBHelper dbHelper = new DBHelper(this);
+
+
+        Intent intent = getIntent();
+        if (intent != null) {
+            noteId = intent.getIntExtra("id", -1);
+            if (noteId != -1) {
+                Note existingNote = dbHelper.getNoteById(noteId);
+                if (existingNote != null) {
+                    titleEditText.setText(existingNote.getTitle());
+                    descriptionEditText.setText(existingNote.getDescription());
+                    importanceSpinner.setSelection(existingNote.getImportance() - 1);
+                    selectedDate = existingNote.getDateTime().split(" ")[0];
+                    selectedTime = existingNote.getDateTime().split(" ")[1];
+                    dateTextView.setText(selectedDate);
+                    timeTextView.setText(selectedTime);
+                    if (existingNote.getImageUri() != null) {
+                        imageUri = Uri.parse(existingNote.getImageUri());
+                        imageView.setImageURI(imageUri);
+                    }
+                }
+            }
+        }
+
+
+        imageView.setOnClickListener(v -> {
+            Intent intentImage = new Intent(Intent.ACTION_OPEN_DOCUMENT);
+            intentImage.addCategory(Intent.CATEGORY_OPENABLE);
+            intentImage.setType("image/*");
+            startActivityForResult(intentImage, PICK_IMAGE_REQUEST);
+        });
+
+
+        dateButton.setOnClickListener(v -> {
+            Calendar calendar = Calendar.getInstance();
+            new DatePickerDialog(this, (view, year, month, dayOfMonth) -> {
+                selectedDate = year + "-" + (month + 1) + "-" + dayOfMonth;
+                dateTextView.setText(selectedDate);
+            }, calendar.get(Calendar.YEAR), calendar.get(Calendar.MONTH), calendar.get(Calendar.DAY_OF_MONTH)).show();
+        });
+
+
+        timeButton.setOnClickListener(v -> {
+            Calendar calendar = Calendar.getInstance();
+            new TimePickerDialog(this, (view, hourOfDay, minute) -> {
+                selectedTime = hourOfDay + ":" + String.format("%02d", minute);
+                timeTextView.setText(selectedTime);
+            }, calendar.get(Calendar.HOUR_OF_DAY), calendar.get(Calendar.MINUTE), true).show();
+        });
+
+
+        saveButton.setOnClickListener(v -> {
+            String title = titleEditText.getText().toString();
+            String description = descriptionEditText.getText().toString();
+            int importance = importanceSpinner.getSelectedItemPosition() + 1;
+            String dateTime = selectedDate + " " + selectedTime;
+            String imageUriString = imageUri != null ? imageUri.toString() : null;
+
+            if (noteId == -1) {
+                long newNoteId = dbHelper.addNote(new Note(
+                        titleEditText.getText().toString(),
+                        descriptionEditText.getText().toString(),
+                        importanceSpinner.getSelectedItemPosition() + 1,
+                        selectedDate + " " + selectedTime,
+                        imageUri != null ? imageUri.toString() : null
+                ));
+
+                Intent resultIntent = new Intent();
+                resultIntent.putExtra("id", newNoteId);
+                setResult(RESULT_OK, resultIntent);
+                scheduleNotificationsForNote(title, description, newNoteId);
+            } else {
+                dbHelper.updateNote(new Note(noteId, title, description, importance, dateTime, imageUriString));
+                Intent resultIntent = new Intent();
+                resultIntent.putExtra("id", noteId);
+                setResult(RESULT_OK, resultIntent);
+                scheduleNotificationsForNote(title,description,noteId);
+            }
+
+            setResult(RESULT_OK);
+            finish();
+        });
+
+
+    }
+
+
+    private void scheduleNotificationsForNote(String title, String description, long noteId) {
+        try {
+            String dateTime = selectedDate + " " + selectedTime;
+            long eventTime = Note.parseDateTime(dateTime).getTime();
+
+            long oneDayBefore = eventTime - (24 * 60 * 60 * 1000);
+            long threeHoursBefore = eventTime - (3 * 60 * 60 * 1000);
+            long oneHourBefore = eventTime - (1 * 60 * 60 * 1000);
+
+            if (oneDayBefore > System.currentTimeMillis()) {
+                scheduleNotification(this, title, description, oneDayBefore, (int) (noteId * 1000 + 1));
+            }
+            if (threeHoursBefore > System.currentTimeMillis()) {
+                scheduleNotification(this, title, description, threeHoursBefore, (int) (noteId * 1000 + 2));
+            }
+            if (oneHourBefore > System.currentTimeMillis()) {
+                scheduleNotification(this, title, description, oneHourBefore, (int) (noteId * 1000 + 3));
+            }
+        } catch (ParseException e) {
+            e.printStackTrace();
+            Toast.makeText(this, "Error in Format", Toast.LENGTH_LONG).show();
+        }
+    }
+
+
+
+    private void scheduleNotification(Context context, String title, String dateTime, long timeInMillis, int notificationId) {
+        dateTime = selectedDate + " " + selectedTime;
+        Intent intent = new Intent(context, Notification.class);
+        intent.putExtra("title", title);
+        intent.putExtra("datetime", dateTime);
+        intent.putExtra("notificationId", notificationId);
+
+        PendingIntent pendingIntent = PendingIntent.getBroadcast(
+                context,
+                notificationId,
+                intent,
+                PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE
+        );
+
+        AlarmManager alarmManager = (AlarmManager) context.getSystemService(Context.ALARM_SERVICE);
+        if (alarmManager != null) {
+            alarmManager.setExact(AlarmManager.RTC_WAKEUP, timeInMillis, pendingIntent);
+        }
+    }
+
+
+
+
+
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+        super.onActivityResult(requestCode, resultCode, data);
+        if (requestCode == PICK_IMAGE_REQUEST && resultCode == RESULT_OK && data != null) {
+            imageUri = data.getData();
+            imageView.setImageURI(imageUri);
+
+
+            getContentResolver().takePersistableUriPermission(imageUri,
+                    Intent.FLAG_GRANT_READ_URI_PERMISSION | Intent.FLAG_GRANT_WRITE_URI_PERMISSION);
+        }
+    }
+}
+
+
+package com.nuresemonovoleh.android_pzpi_23_2_semonov_oleh_labtask5;
+
+import android.app.AlarmManager;
+import android.app.PendingIntent;
+import android.content.Context;
+import android.content.Intent;
+import android.content.pm.PackageManager;
+import android.os.Build;
+import android.os.Bundle;
+import android.view.ContextMenu;
+import android.view.Menu;
+import android.view.MenuInflater;
+import android.view.MenuItem;
+import android.view.View;
+import android.view.ViewGroup;
+import android.widget.Toast;
+
+import androidx.annotation.NonNull;
+import androidx.appcompat.app.AlertDialog;
+import androidx.appcompat.app.AppCompatActivity;
+import androidx.appcompat.widget.SearchView;
+import androidx.core.app.ActivityCompat;
+import androidx.core.content.ContextCompat;
+import androidx.recyclerview.widget.LinearLayoutManager;
+import androidx.recyclerview.widget.RecyclerView;
+
+import java.util.ArrayList;
+import java.util.List;
+
+public class MainActivity extends AppCompatActivity {
+
+    private static final int REQUEST_CODE_NOTIFICATIONS = 1001;
+    private RecyclerView recyclerViewNotes;
+    private NoteAdapter noteAdapter;
+    private List<Note> noteList;
+    private DBHelper dbHelper;
+
+    @Override
+    protected void onCreate(Bundle savedInstanceState) {
+        Theme.applyTheme(this);
+
+        super.onCreate(savedInstanceState);
+        setContentView(R.layout.activity_main);
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            if (ContextCompat.checkSelfPermission(this, android.Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
+                ActivityCompat.requestPermissions(this, new String[]{android.Manifest.permission.POST_NOTIFICATIONS}, REQUEST_CODE_NOTIFICATIONS);
+            }
+        }
+
+        Notification.createNotificationChannel(this);
+
+
+        dbHelper = new DBHelper(this);
+
+        noteList = new ArrayList<>();
+        noteAdapter = new NoteAdapter(noteList, this);
+
+        recyclerViewNotes = findViewById(R.id.recyclerViewNotes);
+        recyclerViewNotes.setLayoutManager(new LinearLayoutManager(this));
+        recyclerViewNotes.setAdapter(noteAdapter);
+
+        loadNotes();
+
+        registerForContextMenu(recyclerViewNotes);
+
+    }
+
+    private void loadNotes() {
+        List<Note> notesFromDb = dbHelper.getAllNotes();
+        if (notesFromDb != null) {
+            noteList.clear();
+            noteList.addAll(notesFromDb);
+
+            noteAdapter = new NoteAdapter(noteList, this);
+            recyclerViewNotes.setAdapter(noteAdapter);
+        } else {
+            Toast.makeText(this, "Zero Notes", Toast.LENGTH_SHORT).show();
+        }
+    }
+
+    @Override
+    public boolean onCreateOptionsMenu(Menu menu) {
+        MenuInflater inflater = getMenuInflater();
+        inflater.inflate(R.menu.main_menu, menu);
+
+        MenuItem searchItem = menu.findItem(R.id.menu_search);
+        SearchView searchView = (SearchView) searchItem.getActionView();
+
+        searchView.setOnQueryTextListener(new SearchView.OnQueryTextListener() {
+            @Override
+            public boolean onQueryTextSubmit(String query) {
+                filterNotes(query);
+                return true;
+            }
+
+            @Override
+            public boolean onQueryTextChange(String newText) {
+                filterNotes(newText);
+                return true;
+            }
+        });
+
+        return true;
+    }
+    private void filterNotes(String query) {
+        List<Note> filteredList = dbHelper.searchNotes(query);
+        noteAdapter.updateList(filteredList);
+    }
+
+    @Override
+    public boolean onOptionsItemSelected(@NonNull MenuItem item) {
+        if (item.getItemId() == R.id.menu_add_note) {
+            Intent intent = new Intent(this, AddEditNote.class);
+            startActivityForResult(intent, 1); // Код 1 для додавання
+            return true;
+        } else if (item.getItemId() == R.id.menu_filter) {
+            showImportanceFilterDialog();
+            return true;
+        }
+        else if (item.getItemId() == R.id.menu_settings){
+            showThemeSettingDialog();
+        }
+        return super.onOptionsItemSelected(item);
+    }
+
+    private void showThemeSettingDialog(){
+        String[] themes = {"Light Theme", "Dark Theme", "System Default"};
+        new AlertDialog.Builder(this)
+                .setTitle("Choose Your Destiny")
+                .setSingleChoiceItems(themes, Theme.getSavedTheme(this), ((dialog, which) -> {
+                    Theme.saveTheme(this, which);
+                    dialog.dismiss();
+                    showFontSizeSettingDialog();
+                })).show();
+    }
+    private void showFontSizeSettingDialog() {
+        String[] fontSizes = {"Small", "Medium", "Big"};
+
+        new AlertDialog.Builder(this)
+                .setTitle("Choose Font Size")
+                .setSingleChoiceItems(fontSizes, Theme.getSavedFontSize(this), (dialog, which) -> {
+                    Theme.saveFontSize(this, which);
+                    dialog.dismiss();
+                    recreate();
+                })
+                .show();
+    }
+    private void showImportanceFilterDialog() {
+        String[] importanceOptions = {"All", "Low Importance", "Middle Importance", "High Importance"};
+        new android.app.AlertDialog.Builder(this)
+                .setTitle("Importance Filter")
+                .setItems(importanceOptions, (dialog, which) -> {
+                    if (which == 0) {
+                        loadNotes();
+                    } else {
+                        filterNotesByImportance(which);
+                    }
+                })
+                .show();
+    }
+
+    private void filterNotesByImportance(int importance) {
+        List<Note> filteredList = dbHelper.getAllNotes();
+        filteredList.removeIf(note -> note.getImportance() != importance);
+        noteAdapter.updateList(filteredList);
+    }
+
+
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+        super.onActivityResult(requestCode, resultCode, data);
+
+        if (resultCode == RESULT_OK && data != null) {
+            String title = data.getStringExtra("title");
+            String description = data.getStringExtra("description");
+            int importance = data.getIntExtra("importance", 1);
+            String dateTime = data.getStringExtra("dateTime");
+            String imageUri = data.getStringExtra("imageUri");
+
+            if (requestCode == 1) {
+                Note newNote = new Note(0, title, description, importance, dateTime, imageUri);
+                dbHelper.addNote(newNote);
+                loadNotes();
+            } else if (requestCode == 2) {
+                int noteId = data.getIntExtra("id", -1);
+                Note updatedNote = new Note(noteId, title, description, importance, dateTime, imageUri);
+                dbHelper.updateNote(updatedNote);
+                loadNotes();
+            }
+
+            recreate();
+        }
+    }
+
+    @Override
+    public void onCreateContextMenu(ContextMenu menu, View v, ContextMenu.ContextMenuInfo menuInfo) {
+        super.onCreateContextMenu(menu, v, menuInfo);
+        getMenuInflater().inflate(R.menu.context_menu, menu);
+    }
+
+    @Override
+    public boolean onContextItemSelected(@NonNull MenuItem item) {
+        int position = noteAdapter.getContextMenuPosition();
+
+        if (position < 0 || position >= noteList.size()) {
+            return super.onContextItemSelected(item);
+        }
+
+        Note selectedNote = noteList.get(position);
+
+        if (item.getItemId() == R.id.menu_edit_note) {
+            Intent intent = new Intent(this, AddEditNote.class);
+            intent.putExtra("id", selectedNote.getId());
+            intent.putExtra("title", selectedNote.getTitle());
+            intent.putExtra("description", selectedNote.getDescription());
+            intent.putExtra("importance", selectedNote.getImportance());
+            intent.putExtra("dateTime", selectedNote.getDateTime());
+            intent.putExtra("imageUri", selectedNote.getImageUri());
+            startActivityForResult(intent, 2);
+            return true;
+        } else if (item.getItemId() == R.id.menu_delete_note) {
+            dbHelper.deleteNote(selectedNote.getId());
+            cancelNotification(this, (int) (selectedNote.getId() * 1000 + 1));
+            cancelNotification(this, (int) (selectedNote.getId() * 1000 + 2));
+            cancelNotification(this, (int) (selectedNote.getId() * 1000 + 3));
+
+            loadNotes();
+            return true;
+        }
+
+        return super.onContextItemSelected(item);
+    }
+
+    private void cancelNotification(Context context, int notificationId) {
+        Intent intent = new Intent(context, Notification.class);
+        PendingIntent pendingIntent = PendingIntent.getBroadcast(
+                context,
+                notificationId,
+                intent,
+                PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE
+        );
+
+        AlarmManager alarmManager = (AlarmManager) context.getSystemService(Context.ALARM_SERVICE);
+        if (alarmManager != null) {
+            alarmManager.cancel(pendingIntent);
+        }
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+        loadNotes();
+    }
+}
+
+
+package com.nuresemonovoleh.android_pzpi_23_2_semonov_oleh_labtask5;
+
+import android.content.Context;
+import android.content.res.Configuration;
+import android.view.View;
+import android.view.ViewGroup;
+import android.widget.Button;
+import android.widget.CheckBox;
+import android.widget.EditText;
+import android.widget.RadioButton;
+import android.widget.TextView;
+
+import androidx.appcompat.app.AppCompatActivity;
+
+public class Theme {
+    private static final String PREFS_NAME = "theme";
+    private static final String KEY_THEME = "key_theme";
+    private static final String KEY_FONT_SIZE = "key_font_size";
+
+    public static final int THEME_LIGHT = 0;
+    public static final int THEME_DARK = 1;
+    public static final int THEME_SYSTEM = 2;
+
+    public static final int FONT_SIZE_SMALL = 0;
+    public static final int FONT_SIZE_MEDIUM = 1;
+    public static final int FONT_SIZE_BIG = 2;
+
+    public static void applyTheme(Context context){
+        int theme = getSavedTheme(context);
+        int fontSize = getSavedFontSize(context);
+
+        switch (theme) {
+            case THEME_LIGHT:
+                if (fontSize == FONT_SIZE_SMALL) {
+                    context.setTheme(R.style.AppTheme_Light_Small);
+                } else if (fontSize == FONT_SIZE_MEDIUM) {
+                    context.setTheme(R.style.AppTheme_Light_Medium);
+                } else if (fontSize == FONT_SIZE_BIG) {
+                    context.setTheme(R.style.AppTheme_Light_Big);
+                }
+                break;
+
+            case THEME_DARK:
+                if (fontSize == FONT_SIZE_SMALL) {
+                    context.setTheme(R.style.AppTheme_Dark_Small);
+                } else if (fontSize == FONT_SIZE_MEDIUM) {
+                    context.setTheme(R.style.AppTheme_Dark_Medium);
+                } else if (fontSize == FONT_SIZE_BIG) {
+                    context.setTheme(R.style.AppTheme_Dark_Big);
+                }
+                break;
+
+            case THEME_SYSTEM:
+                int currentNight = context.getResources().getConfiguration().uiMode & Configuration.UI_MODE_NIGHT_MASK;
+                if (currentNight == Configuration.UI_MODE_NIGHT_YES) {
+                    if (fontSize == FONT_SIZE_SMALL) {
+                        context.setTheme(R.style.AppTheme_Dark_Small);
+                    } else if (fontSize == FONT_SIZE_MEDIUM) {
+                        context.setTheme(R.style.AppTheme_Dark_Medium);
+                    } else if (fontSize == FONT_SIZE_BIG) {
+                        context.setTheme(R.style.AppTheme_Dark_Big);
+                    }
+                } else {
+                    if (fontSize == FONT_SIZE_SMALL) {
+                        context.setTheme(R.style.AppTheme_Light_Small);
+                    } else if (fontSize == FONT_SIZE_MEDIUM) {
+                        context.setTheme(R.style.AppTheme_Light_Medium);
+                    } else if (fontSize == FONT_SIZE_BIG) {
+                        context.setTheme(R.style.AppTheme_Light_Big);
+                    }
+                }
+                break;
+
+
+        }
+    }
+    public static void saveTheme(Context context, int theme){
+        context.getSharedPreferences(PREFS_NAME,Context.MODE_PRIVATE)
+                .edit()
+                .putInt(KEY_THEME, theme)
+                .apply();
+    }
+    public static int getSavedTheme(Context context){
+        return context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+                .getInt(KEY_THEME, THEME_SYSTEM);
+    }
+
+
+    public static void saveFontSize(Context context, int fontSize){
+        context.getSharedPreferences(PREFS_NAME,context.MODE_PRIVATE)
+                .edit()
+                .putInt(KEY_FONT_SIZE, fontSize)
+                .apply();
+    }
+    public static int getSavedFontSize(Context context){
+        return context.getSharedPreferences(PREFS_NAME, context.MODE_PRIVATE)
+                .getInt(KEY_FONT_SIZE, FONT_SIZE_MEDIUM);
+
+    }
+
+
+
+
+
+}
+
+
+package com.nuresemonovoleh.android_pzpi_23_2_semonov_oleh_labtask5;
+
+import android.net.Uri;
+import android.os.Bundle;
+import android.view.ViewGroup;
+import android.widget.ImageView;
+import android.widget.TextView;
+
+import androidx.activity.EdgeToEdge;
+import androidx.appcompat.app.AppCompatActivity;
+import androidx.core.graphics.Insets;
+import androidx.core.view.ViewCompat;
+import androidx.core.view.WindowInsetsCompat;
+
+public class ViewNote extends AppCompatActivity {
+
+    private TextView titleView, descriptionView, dateTimeView, importanceView;
+    private ImageView imageView;
+
+    @Override
+    protected void onCreate(Bundle savedInstanceState) {
+        Theme.applyTheme(this);
+        super.onCreate(savedInstanceState);
+        EdgeToEdge.enable(this);
+        setContentView(R.layout.activity_view_note);
+        ViewCompat.setOnApplyWindowInsetsListener(findViewById(R.id.main), (v, insets) -> {
+            Insets systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars());
+            v.setPadding(systemBars.left, systemBars.top, systemBars.right, systemBars.bottom);
+            return insets;
+        });
+
+        titleView = findViewById(R.id.textViewTitle);
+        descriptionView = findViewById(R.id.textViewDescription);
+        dateTimeView = findViewById(R.id.textViewDateTime);
+        importanceView = findViewById(R.id.textViewImportance);
+        imageView = findViewById(R.id.imageViewNote);
+
+
+        String title = getIntent().getStringExtra("title");
+        String description = getIntent().getStringExtra("description");
+        String dateTime = getIntent().getStringExtra("dateTime");
+        int importance = getIntent().getIntExtra("importance", 1);
+        String imageUri = getIntent().getStringExtra("imageUri");
+
+
+        titleView.setText(title);
+        descriptionView.setText(description);
+        dateTimeView.setText(dateTime);
+
+        String importanceText;
+        switch (importance) {
+            case 1: importanceText = "Low Importance"; break;
+            case 2: importanceText = "Middle Importance"; break;
+            case 3: importanceText = "High Importance"; break;
+            default: importanceText = "Unknown";
+        }
+        importanceView.setText(importanceText);
+
+        if (imageUri != null && !imageUri.isEmpty()) {
+            imageView.setImageURI(Uri.parse(imageUri));
+        } else {
+            imageView.setImageResource(R.drawable.ic_launcher_background);
+        }
+    }
+}
+
+package com.nuresemonovoleh.android_pzpi_23_2_semonov_oleh_labtask5;
+
+
+import android.app.NotificationChannel;
+import android.app.NotificationManager;
+import android.content.BroadcastReceiver;
+import android.content.Context;
+import android.content.Intent;
+
+import androidx.core.app.NotificationCompat;
+import androidx.core.app.NotificationManagerCompat;
+
+public class Notification extends BroadcastReceiver {
+
+    @Override
+    public void onReceive(Context context, Intent intent) {
+        String title = intent.getStringExtra("title");
+        String datetime = intent.getStringExtra("datetime");
+        int notificationId = intent.getIntExtra("notificationId", 0);
+
+        System.out.println("Received Data: Title = " + title + ", DateTime = " + datetime);
+
+        NotificationCompat.Builder builder = new NotificationCompat.Builder(context, "note_reminder_channel")
+                .setSmallIcon(R.drawable.ic_launcher_foreground)
+                .setContentTitle(title)
+                .setContentText("Planned on: " + datetime)
+                .setPriority(NotificationCompat.PRIORITY_HIGH)
+                .setAutoCancel(true);
+
+        NotificationManagerCompat notificationManager = NotificationManagerCompat.from(context);
+        notificationManager.notify(notificationId, builder.build());
+    }
+    public static void createNotificationChannel(Context context) {
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
+            NotificationChannel channel = new NotificationChannel(
+                    "note_reminder_channel",
+                    "Note Reminders",
+                    NotificationManager.IMPORTANCE_HIGH
+            );
+            channel.setDescription("Notifications");
+            NotificationManager manager = context.getSystemService(NotificationManager.class);
+            if (manager != null) {
+                manager.createNotificationChannel(channel);
+            }
+        }
+    }
+}
+
