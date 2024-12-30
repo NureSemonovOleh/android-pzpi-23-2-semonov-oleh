@@ -1,0 +1,112 @@
+<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:padding="16dp">
+
+
+    <EditText
+        android:id="@+id/editTextTitle"
+        android:layout_width="173dp"
+        android:layout_height="50dp"
+        android:layout_marginEnd="180dp"
+        android:hint="@string/title"
+        app:layout_constraintEnd_toEndOf="@+id/editTextDescription"
+        app:layout_constraintTop_toTopOf="parent" />
+
+    <EditText
+        android:id="@+id/editTextDescription"
+        android:layout_width="355dp"
+        android:layout_height="58dp"
+        android:hint="@string/description"
+        android:inputType="textMultiLine"
+        android:lines="4"
+        app:layout_constraintEnd_toEndOf="@+id/spinnerImportance"
+        app:layout_constraintTop_toBottomOf="@+id/editTextTitle" />
+
+
+    <ImageView
+        android:id="@+id/imageViewNote"
+        android:layout_width="317dp"
+        android:layout_height="205dp"
+        android:layout_gravity="right"
+        android:layout_marginTop="48dp"
+
+        android:background="#000000"
+        android:backgroundTint="#050202"
+        android:contentDescription="Image"
+        android:scaleType="centerCrop"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintTop_toTopOf="parent" />
+
+    <Button
+        android:id="@+id/buttonSelectDate"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="12dp"
+        android:layout_marginEnd="32dp"
+        android:text="@string/select_date"
+        app:layout_constraintEnd_toStartOf="@+id/textViewDate"
+        app:layout_constraintTop_toBottomOf="@+id/buttonSelectTime" />
+
+    <TextView
+        android:id="@+id/textViewDate"
+        android:layout_width="142dp"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="44dp"
+        android:layout_marginEnd="36dp"
+        android:text="@string/date_not_selected"
+        app:layout_constraintEnd_toStartOf="@+id/imageViewNote"
+        app:layout_constraintTop_toBottomOf="@+id/textViewTime" />
+
+    <Button
+        android:id="@+id/buttonSelectTime"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="28dp"
+        android:layout_marginEnd="28dp"
+        android:text="@string/select_time"
+        app:layout_constraintEnd_toStartOf="@+id/textViewTime"
+        app:layout_constraintTop_toBottomOf="@+id/importanceLabel" />
+
+    <TextView
+        android:id="@+id/textViewTime"
+        android:layout_width="124dp"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="36dp"
+        android:layout_marginEnd="56dp"
+        android:text="@string/time_not_selected"
+        app:layout_constraintEnd_toStartOf="@+id/imageViewNote"
+        app:layout_constraintTop_toBottomOf="@+id/spinnerImportance" />
+
+    <Button
+        android:id="@+id/buttonSave"
+        android:layout_width="185dp"
+        android:layout_height="58dp"
+        android:layout_gravity="center"
+        android:layout_marginEnd="52dp"
+        android:text="@string/save"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/imageViewNote" />
+
+    <Spinner
+        android:id="@+id/spinnerImportance"
+        android:layout_width="225dp"
+        android:layout_height="45dp"
+        android:entries="@array/importance_array"
+        app:layout_constraintEnd_toStartOf="@+id/imageViewNote"
+        app:layout_constraintTop_toBottomOf="@+id/editTextDescription" />
+
+    <TextView
+        android:id="@+id/importanceLabel"
+        android:layout_width="98dp"
+        android:layout_height="44dp"
+        android:text="@string/importance"
+        android:gravity="center"
+        android:textSize="16sp"
+        app:layout_constraintEnd_toStartOf="@+id/spinnerImportance"
+        app:layout_constraintTop_toBottomOf="@+id/editTextDescription" />
+</androidx.constraintlayout.widget.ConstraintLayout>
