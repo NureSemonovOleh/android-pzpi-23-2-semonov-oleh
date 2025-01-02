@@ -215,7 +215,7 @@ private String readFile(String fileName){
 
 4.3 Висновки
 Під час виконання практичної роботи  було ознайомлено з 3 способами збереження інформації додатку, а саме: SharedPreferences, SQLite та за допомогою файлів.
-Відеозвіт. URL:https://youtu.be/j-WMxsJYQio 
+Відеозвіт. URL: https://youtu.be/j-WMxsJYQio
  
 Використані джерела:
 1. SharedPreferences. URL: https://developer.android.com/reference/android/content/SharedPreferences#contains(java.lang.String)
