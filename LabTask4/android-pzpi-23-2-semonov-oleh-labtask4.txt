@@ -163,7 +163,7 @@ public class NoteAdapter extends RecyclerView.Adapter<NoteAdapter.NoteViewHolder
 
 Висновки:
 Після опрацювання лабораторної роботи було створено додаток для керування нотатками з фільтрацією та пошуком, а також зі зручним перекладом в залежності від мови пристрою
-Відеозвіт. URL: https://youtu.be/28OdkuDjFPI 
+Відеозвіт. URL: https://youtu.be/28OdkuDjFPI
 
 Використані джерела
 1. Create dynamic lists with RecyclerView. URL: https://developer.android.com/develop/ui/views/layout/recyclerview
