@@ -248,7 +248,7 @@ protected void onRestoreInstanceState(Bundle savedInstanceState){
 
 Висновки:
 Під час виконання роботи було створено простий калькулятор на 4 дії з можливістю збереження стану при зміні орієнтації, а також був зроблений під різні орієнтації екрану.
-Відеозвіт. URL: https://youtu.be/wVkM5He4lNo 
+Відеозвіт. URL: https://youtu.be/wVkM5He4lNo
 
 
 
