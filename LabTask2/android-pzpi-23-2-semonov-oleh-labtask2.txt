@@ -130,7 +130,8 @@ private void setColor() {
 ВИСНОВКИ
 
 	Отже, під час виконання лабораторної роботи було закріплено вміння з зміни орієнтації, обробки подій та змін на екрані.
-Відеозвіт. URL: https://youtu.be/uiOKrHMAELA 
+Відеозвіт. URL: https://youtu.be/uiOKrHMAELA
+
 ПЕРЕЛІК ВИКОРИСТАНИХ ДЖЕРЕЛ
 
 1. SeekBar.OnSeekBarChangeListener https://developer.android.com/reference/android/widget/SeekBar.OnSeekBarChangeListener
