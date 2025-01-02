@@ -61,7 +61,7 @@ android:gravity="center"
 3 Висновки
 
 Під час виконання лабораторної роботи було набуто знань з реалізації базових методів життєвого циклу активності і налаштування розмітки.
-Відеозвіт: https://www.youtube.com/watch?v=hv4e0vWlNnE
+Відеозвіт. URL: https://www.youtube.com/watch?v=hv4e0vWlNnE
 
 Використані джерела:
 1. Developer Android. Activity. URL: https://developer.android.com/reference/android/app/Activity
