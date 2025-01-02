@@ -274,7 +274,7 @@ private void scheduleNotification(Context context, String title, String dateTime
 Отже, всі пункти і додатковий пункт були виконані і протестовані успішно
 5.3 Висновки
 Під час виконання роботи було навчено використання діалогових вікон, бази даних для збереження даних та робота з нотифікаціями
-Відеозвіт. URL:https://youtu.be/XLarm0ytxKQ 
+Відеозвіт. URL:https://youtu.be/XLarm0ytxKQ
 
 
 ДОДАТКИ
