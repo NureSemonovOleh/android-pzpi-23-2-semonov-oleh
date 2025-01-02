@@ -353,7 +353,7 @@ recyclerView.setAdapter(adapter);
 
 Висновки:
 Під час практичної роботи було ознайомлено з діалоговими панелями, обробкою потоків та списками прогортування
-Відеозвіт. URL: https://youtu.be/IipvSY9n0SI 
+Відеозвіт. URL: https://youtu.be/IipvSY9n0SI
 
 Використані джерела:
 1. Методичні вказівки до практичних занять: https://dl.nure.ua/mod/page/view.php?id=599587
